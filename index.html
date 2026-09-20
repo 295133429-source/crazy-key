@@ -1152,6 +1152,7 @@ function getHeroData(name) {
 let CONFIG = loadConfig();
 let CANDIDATES = loadCandidates();
 let editingSlot = { hero: null, type: null, slot: null };
+let isAddingSlot = { hero: null, type: null, slot: null };
 let candidatePanel = { open: false, type: 'badge', part: '防具' };
 let activeBagHero = null;
 let justReplaced = null;
@@ -1166,7 +1167,6 @@ const heroResultEl = document.getElementById('heroResult');
 const statResultEl = document.getElementById('statResult');
 const bagResultEl = document.getElementById('bagResult');
 
-/* 按英雄查下拉 */
 const heroSelectEl = document.getElementById('heroSelect');
 if (heroSelectEl) {
   Object.keys(HEROES).forEach(name => {
@@ -1181,7 +1181,6 @@ if (heroSelectEl) {
   renderHero(heroSelectEl.value);
 }
 
-/* 按词条反查下拉 */
 const statSelectEl = document.getElementById('statSelect');
 if (statSelectEl) {
   Object.keys(STATS).forEach(stat => {
@@ -1196,7 +1195,6 @@ if (statSelectEl) {
   renderStat(statSelectEl.value);
 }
 
-/* 配置和对比英雄下拉 */
 const bagHeroSelectEl = document.getElementById('bagHeroSelect');
 if (bagHeroSelectEl) {
   Object.keys(HEROES).forEach(name => {
@@ -1212,7 +1210,6 @@ if (bagHeroSelectEl) {
   };
   bagHeroSelectEl.value = Object.keys(HEROES)[0];
   activeBagHero = bagHeroSelectEl.value;
-  renderBag(bagHeroSelectEl.value);
 }
 
 function isFlatStat(name) {
@@ -1495,9 +1492,7 @@ function renderStat(stat) {
 
   html += `<div class="tip info">${s.reason}</div></div>`;
   statResultEl.innerHTML = html;
-}
-
-/* ============ 配置和对比页 ============ */
+}/* ============ 配置和对比页 ============ */
 
 function renderBag(name) {
   const data = getHeroData(name);
@@ -1519,6 +1514,7 @@ function renderBag(name) {
     const slotKey = String(i);
     const b = data.badges[slotKey];
     const isEditing = editingSlot.hero === name && editingSlot.type === 'badge' && editingSlot.slot === slotKey;
+    const isAdding = isAddingSlot.hero === name && isAddingSlot.type === 'badge' && isAddingSlot.slot === slotKey;
     const isReplaced = justReplaced && justReplaced.hero === name && justReplaced.type === 'badge' && justReplaced.slot === slotKey;
     if (b) {
       const sc = scoreItem(name, b.stats, b.quality, null, 'badge', b.base);
@@ -1535,7 +1531,15 @@ function renderBag(name) {
         ${isEditing ? inlineBadgeEditor(name, slotKey, b) : ''}
       </div>`;
     } else {
-      html += `<div class="slot" id="slot-badge-${i}"><div class="empty-tip">槽 ${i} 未录入</div></div>`;
+      html += `<div class="slot" id="slot-badge-${i}">
+        <div class="head">
+          <span class="tag">槽 ${i} · 空</span>
+          <div class="slot-actions">
+            <button class="btn ghost small" onclick="openAddSlot('${name}','badge','${slotKey}')">${isAdding ? '关闭' : '+ 录入'}</button>
+          </div>
+        </div>
+        ${isAdding ? inlineAddEditor(name, 'badge', slotKey, null) : ''}
+      </div>`;
     }
   }
 
@@ -1544,6 +1548,7 @@ function renderBag(name) {
     const slotKey = String(i);
     const g = data.gears[slotKey];
     const isEditing = editingSlot.hero === name && editingSlot.type === 'gear' && editingSlot.slot === slotKey;
+    const isAdding = isAddingSlot.hero === name && isAddingSlot.type === 'gear' && isAddingSlot.slot === slotKey;
     const isReplaced = justReplaced && justReplaced.hero === name && justReplaced.type === 'gear' && justReplaced.slot === slotKey;
     if (g) {
       const sc = scoreItem(name, g.stats, g.quality, g.part, 'gear', g.base);
@@ -1560,12 +1565,19 @@ function renderBag(name) {
         ${isEditing ? inlineGearEditor(name, slotKey, g) : ''}
       </div>`;
     } else {
-      html += `<div class="slot" id="slot-gear-${i}"><div class="empty-tip">槽 ${i} 未录入</div></div>`;
+      html += `<div class="slot" id="slot-gear-${i}">
+        <div class="head">
+          <span class="tag">槽 ${i} · 空</span>
+          <div class="slot-actions">
+            <button class="btn ghost small" onclick="openAddSlot('${name}','gear','${slotKey}')">${isAdding ? '关闭' : '+ 录入'}</button>
+          </div>
+        </div>
+        ${isAdding ? inlineAddEditor(name, 'gear', slotKey, null) : ''}
+      </div>`;
     }
   }
 
   html += renderResourcePlan(name);
-
   html += renderCandidatePool(name);
 
   html += `<div class="form-block" style="margin-top:12px">
@@ -1578,69 +1590,127 @@ function renderBag(name) {
     <div id="replaceBox"></div>
   </div>`;
 
-  html += `<div class="form-block" style="margin-top:10px">
-    <h3>添加徽章（自动填入第一个空槽）</h3>
-    <div class="field"><label>品质</label>
-      <select id="addBadgeQ">
-        <option value="1">青铜（紫）</option>
-        <option value="1.3">白银（橙）</option>
-        <option value="1.6">黄金（红）</option>
-      </select></div>
-    <div class="field"><label>基础属性数值</label>
-      <div class="baseline-row" id="addBadgeBaseRow"></div>
-    </div>
-    <div class="field"><label>词条（护甲/穿透类填数值，其余填百分比）</label>
-      <div id="addBadgeStats"></div></div>
-    <button class="btn" onclick="saveBadge('${name}')">添加为下一个徽章</button>
-  </div>`;
-
-  html += `<div class="form-block" style="margin-top:10px">
-    <h3>添加装备（自动填入第一个空槽）</h3>
-    <div class="field"><label>部位</label>
-      <select id="addGearPart">
-        <option value="防具">防具</option>
-        <option value="兵刃">兵刃</option>
-        <option value="枪械">枪械</option>
-      </select></div>
-    <div class="field"><label>品质</label>
-      <select id="addGearQ">
-        <option value="1">青铜（紫）</option>
-        <option value="1.3">白银（橙）</option>
-        <option value="1.6">黄金（红）</option>
-      </select></div>
-    <div class="field"><label>基础属性数值</label>
-      <div class="baseline-row" id="addGearBaseRow"></div>
-    </div>
-    <div class="field"><label>词条（护甲/穿透类填数值，其余填百分比）</label>
-      <div id="addGearStats"></div></div>
-    <button class="btn" onclick="saveGear('${name}')">添加为下一个装备</button>
-  </div>`;
-
   html += `</div>`;
   bagResultEl.innerHTML = html;
-
-  buildStatPicker(document.getElementById('addBadgeStats'), null);
-  buildStatPicker(document.getElementById('addGearStats'), null);
-
-  buildBaseFields(document.getElementById('addBadgeBaseRow'), 'badge', null, {}, 'addBadgeBase');
-  buildBaseFields(document.getElementById('addGearBaseRow'), 'gear', '防具', {}, 'addGearBase');
-
-  document.getElementById('addGearPart').onchange = function() {
-    buildBaseFields(document.getElementById('addGearBaseRow'), 'gear', this.value, {}, 'addGearBase');
-  };
 
   renderOverview(name);
   renderReplaceAdvice(name);
   renderCandidatePoolInteractive(name);
+  initInlineEditors(name);
+  if (isAddingSlot.hero === name) {
+    initAddSlotEditor(name, isAddingSlot.type, isAddingSlot.slot);
+  }
+}
 
-  if (editingSlot.hero === name && editingSlot.type === 'badge') {
-    const b = data.badges[editingSlot.slot];
-    if (b) buildStatPicker(document.getElementById('inlineBadgeStats'), b.stats);
+/* ============ 空槽位内联录入 ============ */
+
+function openAddSlot(hero, type, slotKey) {
+  if (isAddingSlot.hero === hero && isAddingSlot.type === type && isAddingSlot.slot === slotKey) {
+    isAddingSlot = { hero: null, type: null, slot: null };
+  } else {
+    isAddingSlot = { hero: hero, type: type, slot: slotKey };
+    editingSlot = { hero: null, type: null, slot: null };
   }
-  if (editingSlot.hero === name && editingSlot.type === 'gear') {
-    const g = data.gears[editingSlot.slot];
-    if (g) buildStatPicker(document.getElementById('inlineGearStats'), g.stats);
+  renderBag(hero);
+  setTimeout(() => {
+    const slotId = 'slot-' + type + '-' + slotKey;
+    const el = document.getElementById(slotId);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, 100);
+}
+
+function inlineAddEditor(name, type, slotKey, presetPart) {
+  const isGear = type === 'gear';
+  const part = isGear ? (presetPart || '防具') : null;
+  const itemTypeLabel = isGear ? '装备' : '徽章';
+
+  let partSelect = '';
+  if (isGear) {
+    partSelect = `
+      <div class="field">
+        <label>部位</label>
+        <select id="addSlot_part" onchange="onAddSlotPartChange('${name}','${type}','${slotKey}')">
+          <option value="防具" ${part==='防具'?'selected':''}>防具</option>
+          <option value="兵刃" ${part==='兵刃'?'selected':''}>兵刃</option>
+          <option value="枪械" ${part==='枪械'?'selected':''}>枪械</option>
+        </select>
+      </div>`;
   }
+
+  return `<div class="inline-edit">
+    <div class="editing-hint">录入到槽 ${slotKey}（${itemTypeLabel}）</div>
+    ${partSelect}
+    <div class="field">
+      <label>品质</label>
+      <select id="addSlot_quality">
+        <option value="1">青铜（紫）</option>
+        <option value="1.3">白银（橙）</option>
+        <option value="1.6">黄金（红）</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>基础属性数值</label>
+      <div class="baseline-row" id="addSlot_baseRow"></div>
+    </div>
+    <div class="field">
+      <label>词条（护甲/穿透类填数值，其余填百分比）</label>
+      <div id="addSlot_stats"></div>
+    </div>
+    <div class="actions">
+      <button class="btn small" onclick="saveAddSlot('${name}','${type}','${slotKey}')">保存</button>
+      <button class="btn cancel small" onclick="closeAddSlot('${name}','${type}','${slotKey}')">取消</button>
+    </div>
+  </div>`;
+}
+
+function onAddSlotPartChange(hero, type, slotKey) {
+  const part = document.getElementById('addSlot_part').value;
+  const baseRow = document.getElementById('addSlot_baseRow');
+  if (baseRow) buildBaseFields(baseRow, 'gear', part, {}, 'addSlotBase');
+}
+
+function initAddSlotEditor(name, type, slotKey) {
+  const isGear = type === 'gear';
+  let part = null;
+  if (isGear) {
+    const partSel = document.getElementById('addSlot_part');
+    part = partSel ? partSel.value : '防具';
+  }
+  const baseRow = document.getElementById('addSlot_baseRow');
+  const statsBox = document.getElementById('addSlot_stats');
+  if (baseRow) buildBaseFields(baseRow, isGear ? 'gear' : 'badge', part, {}, 'addSlotBase');
+  if (statsBox) buildStatPicker(statsBox, null);
+}
+
+function saveAddSlot(name, type, slotKey) {
+  const isGear = type === 'gear';
+  const part = isGear ? document.getElementById('addSlot_part').value : null;
+  const q = parseFloat(document.getElementById('addSlot_quality').value);
+  const base = readBaseFields(isGear ? 'gear' : 'badge', part, 'addSlotBase');
+  const stats = getSelected(document.getElementById('addSlot_stats'));
+
+  if (stats.length === 0) { alert('请至少选一个词条'); return; }
+
+  const data = getHeroData(name);
+  if (isGear) {
+    data.gears[slotKey] = { part, quality: q, stats, base };
+  } else {
+    data.badges[slotKey] = { quality: q, stats, base };
+  }
+  saveConfig(CONFIG);
+  isAddingSlot = { hero: null, type: null, slot: null };
+  justReplaced = { hero: name, type: isGear ? 'gear' : 'badge', slot: slotKey };
+  renderBag(name);
+  setTimeout(() => {
+    const slotId = 'slot-' + (isGear ? 'gear' : 'badge') + '-' + slotKey;
+    const el = document.getElementById(slotId);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, 100);
+}
+
+function closeAddSlot(name, type, slotKey) {
+  isAddingSlot = { hero: null, type: null, slot: null };
+  renderBag(name);
 }
 
 /* ============ 资源规划 ============ */
@@ -2403,13 +2473,6 @@ function inlineGearEditor(name, slotKey, g) {
   </div>`;
 }
 
-const _origRenderBag = renderBag;
-renderBag = function(name) {
-  _origRenderBag(name);
-  initInlineEditors(name);
-  renderCandidatePoolInteractive(name);
-};
-
 function initInlineEditors(name) {
   const data = getHeroData(name);
   if (editingSlot.hero === name && editingSlot.type === 'badge') {
@@ -2466,42 +2529,6 @@ function saveInlineGear(name, slotKey) {
   }, 100);
 }
 
-function firstEmptySlot(slots, max) {
-  for (let i = 1; i <= max; i++) {
-    if (!slots[String(i)]) return String(i);
-  }
-  return null;
-}
-
-function saveBadge(name) {
-  const q = parseFloat(document.getElementById('addBadgeQ').value);
-  const stats = getSelected(document.getElementById('addBadgeStats'));
-  const base = readBaseFields('badge', null, 'addBadgeBase');
-  if (stats.length === 0) { alert('请至少选一个词条'); return; }
-  const data = getHeroData(name);
-  const slotKey = firstEmptySlot(data.badges, MAX_BADGES);
-  if (!slotKey) { alert('徽章已满 ' + MAX_BADGES + ' 个'); return; }
-  data.badges[slotKey] = { quality: q, stats, base };
-  saveConfig(CONFIG);
-  renderBag(name);
-  alert('已添加到槽 ' + slotKey);
-}
-
-function saveGear(name) {
-  const part = document.getElementById('addGearPart').value;
-  const q = parseFloat(document.getElementById('addGearQ').value);
-  const stats = getSelected(document.getElementById('addGearStats'));
-  const base = readBaseFields('gear', part, 'addGearBase');
-  if (stats.length === 0) { alert('请至少选一个词条'); return; }
-  const data = getHeroData(name);
-  const slotKey = firstEmptySlot(data.gears, MAX_GEARS);
-  if (!slotKey) { alert('装备已满 ' + MAX_GEARS + ' 个'); return; }
-  data.gears[slotKey] = { part, quality: q, stats, base };
-  saveConfig(CONFIG);
-  renderBag(name);
-  alert('已添加到槽 ' + slotKey);
-}
-
 function clearSlot(name, type, slotKey) {
   const data = getHeroData(name);
   delete data[type][slotKey];
@@ -2518,6 +2545,7 @@ function editBadge(name, slotKey) {
     editingSlot = { hero: null, type: null, slot: null };
   } else {
     editingSlot = { hero: name, type: 'badge', slot: slotKey };
+    isAddingSlot = { hero: null, type: null, slot: null };
   }
   justReplaced = null;
   renderBag(name);
@@ -2528,6 +2556,7 @@ function editGear(name, slotKey) {
     editingSlot = { hero: null, type: null, slot: null };
   } else {
     editingSlot = { hero: name, type: 'gear', slot: slotKey };
+    isAddingSlot = { hero: null, type: null, slot: null };
   }
   justReplaced = null;
   renderBag(name);
@@ -3036,6 +3065,10 @@ document.querySelectorAll('.tab').forEach(t => {
     switchTab(t.dataset.panel);
   };
 });
+
+if (activeBagHero) {
+  renderBag(activeBagHero);
+}
 </script>
 </body>
 </html>
