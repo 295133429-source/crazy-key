@@ -34,15 +34,6 @@
   .panel { display: none; }
   .panel.active { display: block; }
 
-  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
-  .chip {
-    padding: 8px 14px; border-radius: 20px; font-size: 13px;
-    background: #1a2530; border: 1px solid #24313d; cursor: pointer;
-    transition: .15s; user-select: none;
-  }
-  .chip.active { background: #2a6df4; border-color: #2a6df4; color: #fff; font-weight: 600; }
-  .chip.hero-chip.active { background: #e8590c; border-color: #e8590c; }
-
   .card {
     background: #161f29; border: 1px solid #24313d; border-radius: 14px;
     padding: 16px; margin-bottom: 12px;
@@ -341,7 +332,6 @@
     background: #2a6df4; border-color: #2a6df4; color: #fff; font-weight: 600;
   }
 
-  /* 资源规划 */
   .resource-row {
     display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
     padding: 10px 12px; border-radius: 10px; margin-bottom: 8px;
@@ -396,17 +386,32 @@
 </div>
 
 <div class="panel active" id="byHero">
-  <div class="chips" id="heroChips"></div>
-  <div id="heroResult"><div class="empty">点一个英雄查看优先级</div></div>
+  <div class="form-block" style="padding:10px 12px">
+    <div class="field" style="margin-bottom:0">
+      <label>选择英雄</label>
+      <select id="heroSelect"></select>
+    </div>
+  </div>
+  <div id="heroResult"><div class="empty">选一个英雄查看优先级</div></div>
 </div>
 
 <div class="panel" id="byStat">
-  <div class="chips" id="statChips"></div>
-  <div id="statResult"><div class="empty">点一个词条查看最适合给谁</div></div>
+  <div class="form-block" style="padding:10px 12px">
+    <div class="field" style="margin-bottom:0">
+      <label>选择词条</label>
+      <select id="statSelect"></select>
+    </div>
+  </div>
+  <div id="statResult"><div class="empty">选一个词条查看最适合给谁</div></div>
 </div>
 
 <div class="panel" id="myBag">
-  <div class="chips" id="bagHeroChips"></div>
+  <div class="form-block" style="padding:10px 12px">
+    <div class="field" style="margin-bottom:0">
+      <label>选择英雄</label>
+      <select id="bagHeroSelect"></select>
+    </div>
+  </div>
   <div id="bagResult"></div>
 </div>
 
@@ -484,7 +489,6 @@ const STAT_THRESHOLDS = {
   "伤害减免": { cap: 75,  warn: 50, note: "最多降为原伤害的 25%（即 75% 减伤上限）" }
 };
 
-/* 场景系数：不同场景对词条权重做调整 */
 const SCENARIOS = {
   "通用": {},
   "PVP竞技场": {
@@ -535,7 +539,6 @@ let currentScenario = "通用";
 function onScenarioChange() {
   const sel = document.getElementById('scenarioSelect');
   currentScenario = sel.value;
-  /* 刷新当前可见页面 */
   if (activeBagHero) renderBag(activeBagHero);
 }
 
@@ -1159,51 +1162,58 @@ let candidateTargets = {};
    界面逻辑
    ============================================================ */
 
-const heroChipsEl = document.getElementById('heroChips');
 const heroResultEl = document.getElementById('heroResult');
-const statChipsEl = document.getElementById('statChips');
 const statResultEl = document.getElementById('statResult');
-const bagHeroChipsEl = document.getElementById('bagHeroChips');
 const bagResultEl = document.getElementById('bagResult');
 
-Object.keys(HEROES).forEach(name => {
-  const c = document.createElement('div');
-  c.className = 'chip hero-chip';
-  c.textContent = name;
-  c.onclick = () => {
-    document.querySelectorAll('#heroChips .chip').forEach(x => x.classList.remove('active'));
-    c.classList.add('active');
-    renderHero(name);
+/* 按英雄查下拉 */
+const heroSelectEl = document.getElementById('heroSelect');
+if (heroSelectEl) {
+  Object.keys(HEROES).forEach(name => {
+    const o = document.createElement('option');
+    o.value = name; o.textContent = name;
+    heroSelectEl.appendChild(o);
+  });
+  heroSelectEl.onchange = () => {
+    if (heroSelectEl.value) renderHero(heroSelectEl.value);
   };
-  heroChipsEl.appendChild(c);
-});
+  heroSelectEl.value = Object.keys(HEROES)[0];
+  renderHero(heroSelectEl.value);
+}
 
-Object.keys(STATS).forEach(stat => {
-  const c = document.createElement('div');
-  c.className = 'chip';
-  c.textContent = stat;
-  c.onclick = () => {
-    document.querySelectorAll('#statChips .chip').forEach(x => x.classList.remove('active'));
-    c.classList.add('active');
-    renderStat(stat);
+/* 按词条反查下拉 */
+const statSelectEl = document.getElementById('statSelect');
+if (statSelectEl) {
+  Object.keys(STATS).forEach(stat => {
+    const o = document.createElement('option');
+    o.value = stat; o.textContent = stat;
+    statSelectEl.appendChild(o);
+  });
+  statSelectEl.onchange = () => {
+    if (statSelectEl.value) renderStat(statSelectEl.value);
   };
-  statChipsEl.appendChild(c);
-});
+  statSelectEl.value = Object.keys(STATS)[0];
+  renderStat(statSelectEl.value);
+}
 
-Object.keys(HEROES).forEach(name => {
-  const c = document.createElement('div');
-  c.className = 'chip hero-chip';
-  c.textContent = name;
-  c.onclick = () => {
-    document.querySelectorAll('#bagHeroChips .chip').forEach(x => x.classList.remove('active'));
-    c.classList.add('active');
+/* 配置和对比英雄下拉 */
+const bagHeroSelectEl = document.getElementById('bagHeroSelect');
+if (bagHeroSelectEl) {
+  Object.keys(HEROES).forEach(name => {
+    const o = document.createElement('option');
+    o.value = name; o.textContent = name;
+    bagHeroSelectEl.appendChild(o);
+  });
+  bagHeroSelectEl.onchange = () => {
     editingSlot = { hero: null, type: null, slot: null };
     justReplaced = null;
-    activeBagHero = name;
-    renderBag(name);
+    activeBagHero = bagHeroSelectEl.value;
+    renderBag(bagHeroSelectEl.value);
   };
-  bagHeroChipsEl.appendChild(c);
-});
+  bagHeroSelectEl.value = Object.keys(HEROES)[0];
+  activeBagHero = bagHeroSelectEl.value;
+  renderBag(bagHeroSelectEl.value);
+}
 
 function isFlatStat(name) {
   return FLAT_STATS.indexOf(name) >= 0;
@@ -1639,7 +1649,6 @@ function renderResourcePlan(name) {
   const data = getHeroData(name);
   const h = HEROES[name];
 
-  /* 收集所有候选的"如果换到推荐槽位"的提升幅度 */
   const heroCandidates = CANDIDATES.filter(c => c.hero === name);
   if (heroCandidates.length === 0) {
     return `<div class="form-block" style="margin-top:12px">
@@ -1688,7 +1697,6 @@ function renderResourcePlan(name) {
     </div>`;
   }
 
-  /* 按提升幅度排序 */
   planItems.sort((a, b) => b.gain - a.gain);
 
   let html = `<div class="form-block" style="margin-top:12px">
@@ -1730,7 +1738,6 @@ function renderResourcePlan(name) {
     </div>`;
   });
 
-  /* 总结 */
   const top1 = planItems[0];
   if (top1.gain > 0) {
     let summary = `建议优先升 <b>${top1.isGear ? top1.cand.part : '徽章'} · ${top1.cand.stats.map(statLabel).join(' + ')}</b>，换到槽 ${top1.slot}，提升 ${top1.gain.toFixed(2)} 分。`;
@@ -3029,10 +3036,6 @@ document.querySelectorAll('.tab').forEach(t => {
     switchTab(t.dataset.panel);
   };
 });
-
-if (activeBagHero) {
-  renderBag(activeBagHero);
-}
 </script>
 </body>
 </html>
