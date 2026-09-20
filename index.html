@@ -1,0 +1,3038 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>疯狂水世界 · 分析器</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0; padding: 16px;
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #0f1720; color: #e8eef5;
+    min-height: 100vh;
+  }
+  h1 { font-size: 18px; margin: 0 0 4px; letter-spacing: 1px; }
+  .sub { font-size: 12px; color: #7a8a9a; margin-bottom: 16px; }
+
+  .scenario-bar {
+    display: flex; align-items: center; gap: 8px;
+    background: #161f29; border: 1px solid #24313d; border-radius: 12px;
+    padding: 10px 12px; margin-bottom: 12px;
+  }
+  .scenario-bar label { font-size: 12px; color: #7a8a9a; white-space: nowrap; }
+  .scenario-bar select { flex: 1; }
+
+  .tabs { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+  .tab {
+    flex: 1; min-width: 70px; padding: 9px 4px; text-align: center; font-size: 12px;
+    background: #1a2530; border-radius: 10px; cursor: pointer;
+    border: 1px solid #24313d; transition: .15s;
+  }
+  .tab.active { background: #2a6df4; border-color: #2a6df4; color: #fff; font-weight: 600; }
+
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .chip {
+    padding: 8px 14px; border-radius: 20px; font-size: 13px;
+    background: #1a2530; border: 1px solid #24313d; cursor: pointer;
+    transition: .15s; user-select: none;
+  }
+  .chip.active { background: #2a6df4; border-color: #2a6df4; color: #fff; font-weight: 600; }
+  .chip.hero-chip.active { background: #e8590c; border-color: #e8590c; }
+
+  .card {
+    background: #161f29; border: 1px solid #24313d; border-radius: 14px;
+    padding: 16px; margin-bottom: 12px;
+  }
+  .card h2 { font-size: 16px; margin: 0 0 12px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .role-tag {
+    font-size: 11px; font-weight: 400; padding: 2px 8px; border-radius: 10px;
+    background: #24313d; color: #9ab;
+  }
+  .role-tag.dmg { background: #2a1a3a; color: #d8a8f0; }
+  .role-tag.out { background: #1a2a3a; color: #9ac8e8; }
+
+  .row { margin-bottom: 12px; }
+  .row:last-child { margin-bottom: 0; }
+  .label { font-size: 12px; color: #7a8a9a; margin-bottom: 6px; }
+  .vals { display: flex; flex-wrap: wrap; gap: 6px; }
+  .val {
+    font-size: 13px; padding: 5px 10px; border-radius: 8px;
+    background: #1e2a36; border: 1px solid #2a3a48;
+  }
+  .val.first { background: #1f3a2a; border-color: #2f6a45; color: #7ee2a8; font-weight: 600; }
+  .val.second { background: #2a2a1f; border-color: #5a5a2f; color: #e2d47e; }
+  .val.last { background: #1a2530; border-color: #2a3a48; color: #9ab; font-size: 12px; }
+
+  .tip {
+    font-size: 13px; line-height: 1.6; color: #b8c8d8;
+    background: #1a2530; border-left: 3px solid #2a6df4;
+    padding: 10px 12px; border-radius: 0 8px 8px 0; margin-top: 12px;
+  }
+  .tip.warn { border-left-color: #e2d47e; }
+  .tip.suggest { border-left-color: #7ee2a8; }
+  .tip.info { border-left-color: #9ac8e8; }
+
+  .empty { text-align: center; color: #5a6a7a; font-size: 14px; padding: 40px 0; }
+
+  .rank { font-size: 12px; color: #7a8a9a; margin: 12px 0 6px; }
+  .hero-line {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; background: #1e2a36; border-radius: 10px;
+    margin-bottom: 8px; border: 1px solid #2a3a48;
+  }
+  .hero-line.top { background: #1f3a2a; border-color: #2f6a45; }
+  .hero-line .name { font-size: 14px; font-weight: 600; flex: 1; }
+  .hero-line .reason { font-size: 12px; color: #9ab; }
+
+  .form-block {
+    background: #161f29; border: 1px solid #24313d; border-radius: 14px;
+    padding: 14px; margin-bottom: 12px;
+  }
+  .form-block h3 { font-size: 14px; margin: 0 0 10px; color: #e8eef5; }
+  .field { margin-bottom: 10px; }
+  .field label { display: block; font-size: 12px; color: #7a8a9a; margin-bottom: 5px; }
+  select, input[type=text], input[type=number], textarea {
+    width: 100%; padding: 9px 10px; font-size: 13px;
+    background: #1e2a36; border: 1px solid #2a3a48; border-radius: 8px;
+    color: #e8eef5; outline: none; -webkit-appearance: none;
+  }
+  textarea {
+    font-family: monospace; font-size: 11px; min-height: 120px;
+    resize: vertical; word-break: break-all;
+  }
+  select:focus, input:focus, textarea:focus { border-color: #2a6df4; }
+
+  .baseline-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .baseline-row .field { flex: 1; min-width: 90px; margin-bottom: 0; }
+
+  .stat-picker { display: flex; flex-wrap: wrap; gap: 8px; }
+  .stat-group { margin-bottom: 10px; }
+  .stat-group-title {
+    font-size: 12px; color: #7a8a9a; margin-bottom: 6px;
+    border-left: 2px solid #2a6df4; padding-left: 6px;
+  }
+  .stat-item {
+    display: flex; align-items: center; gap: 4px;
+    background: #1e2a36; border: 1px solid #2a3a48; border-radius: 8px;
+    padding: 4px 6px 4px 10px;
+  }
+  .stat-item.on { background: #2a6df4; border-color: #2a6df4; }
+  .stat-item .stat-name {
+    font-size: 12px; cursor: pointer; user-select: none;
+    padding: 3px 2px; white-space: nowrap;
+  }
+  .stat-item.on .stat-name { color: #fff; font-weight: 600; }
+  .stat-item input {
+    width: 56px; padding: 3px 5px; font-size: 11px;
+    background: #0f1720; border: 1px solid #2a3a48; border-radius: 5px;
+    color: #e8eef5; outline: none; text-align: center;
+  }
+  .stat-item.on input { border-color: #fff; }
+  .stat-item input::placeholder { color: #5a6a7a; }
+  .stat-item .unit {
+    font-size: 11px; color: #9ab; padding-right: 2px;
+  }
+  .stat-item.on .unit { color: #fff; }
+
+  .btn {
+    width: 100%; padding: 12px; font-size: 15px; font-weight: 600;
+    background: #2a6df4; border: none; border-radius: 10px; color: #fff;
+    cursor: pointer; margin-top: 4px;
+  }
+  .btn:active { background: #1a5ad4; }
+  .btn.small { padding: 8px 14px; font-size: 13px; width: auto; }
+  .btn.ghost { background: #24313d; }
+  .btn.ghost:active { background: #2f3f4d; }
+  .btn.danger { background: #6a2a2a; }
+  .btn.danger:active { background: #7a3a3a; }
+  .btn.cancel { background: #4a3a1a; }
+  .btn.cancel:active { background: #5a4a2a; }
+  .btn.export { background: #2a6a3a; }
+  .btn.export:active { background: #1a5a2a; }
+  .btn.import { background: #6a4a1a; }
+  .btn.import:active { background: #7a5a2a; }
+  .btn.swap { background: #2a4a6a; }
+  .btn.swap:active { background: #1a3a5a; }
+
+  .result-line {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 10px 12px; border-radius: 10px; margin-bottom: 8px;
+    background: #1e2a36; border: 1px solid #2a3a48; font-size: 13px;
+  }
+  .result-line.best { background: #1f3a2a; border-color: #2f6a45; }
+  .result-line.tie { background: #2a2a1f; border-color: #5a5a2f; }
+  .result-line .rname { font-weight: 600; flex: 1; min-width: 200px; }
+  .result-line .rscore { color: #7ee2a8; font-weight: 600; }
+  .verdict {
+    font-size: 14px; line-height: 1.7; padding: 12px;
+    border-radius: 10px; margin-top: 10px;
+  }
+  .verdict.swap { background: #1f3a2a; border: 1px solid #2f6a45; color: #a8e8c0; }
+  .verdict.keep { background: #2a2a1f; border: 1px solid #5a5a2f; color: #e2d47e; }
+  .verdict.other { background: #1f2a3a; border: 1px solid #2f4a6a; color: #9ac8e8; }
+
+  .analysis {
+    background: #0f1720; border: 1px solid #2a6df4;
+    border-radius: 10px; padding: 12px; margin-top: 12px;
+  }
+  .analysis h4 {
+    font-size: 14px; margin: 0 0 10px; color: #7ee2a8;
+    border-bottom: 1px solid #2a3a48; padding-bottom: 6px;
+  }
+  .analysis .line {
+    font-size: 13px; line-height: 1.7; margin-bottom: 6px;
+    padding-left: 10px; border-left: 2px solid #2a3a48;
+  }
+  .analysis .line.good { border-left-color: #7ee2a8; }
+  .analysis .line.bad { border-left-color: #e87a7a; }
+  .analysis .line.warn { border-left-color: #e2d47e; }
+  .analysis .line.info { border-left-color: #9ac8e8; }
+  .analysis .good { color: #7ee2a8; font-weight: 600; }
+  .analysis .bad { color: #f0c88a; font-weight: 600; }
+  .analysis .conclusion {
+    font-size: 14px; padding: 10px; border-radius: 8px;
+    margin-top: 10px; font-weight: 600;
+  }
+  .analysis .conclusion.swap { background: #1f3a2a; color: #a8e8c0; }
+  .analysis .conclusion.keep { background: #2a2a1f; color: #e2d47e; }
+  .analysis .conclusion.tie { background: #1f2a3a; color: #9ac8e8; }
+
+  .slot {
+    background: #1e2a36; border: 1px solid #2a3a48; border-radius: 10px;
+    padding: 10px 12px; margin-bottom: 8px; font-size: 13px;
+    scroll-margin-top: 16px;
+  }
+  .slot.editing { border-color: #2a6df4; background: #1f2a3a; }
+  .slot.just-replaced {
+    border-color: #7ee2a8;
+    box-shadow: 0 0 0 2px #7ee2a8;
+    animation: pulse 1.2s ease-in-out 2;
+  }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 2px #7ee2a8; }
+    50% { box-shadow: 0 0 0 6px rgba(126,226,168,0.3); }
+  }
+  .slot .head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .slot .tag { font-size: 11px; padding: 2px 8px; border-radius: 8px; background: #24313d; color: #9ab; }
+  .slot .stats { display: flex; flex-wrap: wrap; gap: 5px; }
+  .slot .stats span {
+    font-size: 12px; padding: 3px 8px; border-radius: 6px;
+    background: #0f1720; border: 1px solid #2a3a48;
+  }
+  .slot .empty-tip { color: #5a6a7a; font-size: 13px; }
+  .slot-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+  .editing-hint {
+    font-size: 12px; color: #7ee2a8; margin-bottom: 6px;
+    padding: 6px 8px; background: #1f3a2a; border-radius: 6px;
+  }
+  .inline-edit {
+    margin-top: 10px; padding: 10px;
+    background: #0f1720; border-radius: 8px;
+    border: 1px solid #2a6df4;
+  }
+  .inline-edit .field { margin-bottom: 8px; }
+  .inline-edit .actions { display: flex; gap: 6px; margin-top: 8px; }
+
+  .q-badge {
+    display: inline-block; font-size: 11px; font-weight: 600;
+    padding: 2px 7px; border-radius: 6px; margin-right: 4px;
+    vertical-align: middle;
+  }
+  .q-purple { background: #3a2a5a; color: #c8a8f0; border: 1px solid #5a3a8a; }
+  .q-orange { background: #5a3a1a; color: #f0c88a; border: 1px solid #8a5a2a; }
+  .q-red    { background: #5a1a1a; color: #f0a8a8; border: 1px solid #8a2a2a; }
+
+  .base-line {
+    font-size: 12px; color: #9ab; margin-top: 4px;
+    padding: 4px 8px; background: #0f1720; border-radius: 6px;
+    display: inline-block;
+  }
+
+  .slot-swap-row {
+    display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px;
+  }
+
+  .overview-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+  .conflict-line {
+    font-size: 13px; line-height: 1.7; padding: 8px 10px;
+    background: #1e2a36; border-radius: 8px; margin-bottom: 6px;
+    border-left: 3px solid #2a6df4;
+  }
+  .conflict-line.warn { border-left-color: #e2d47e; }
+  .conflict-line.good { border-left-color: #7ee2a8; }
+  .conflict-line.info { border-left-color: #9ac8e8; }
+  .conflict-line.bad  { border-left-color: #e87a7a; }
+  .tier {
+    display: inline-block; font-size: 11px; font-weight: 600;
+    padding: 2px 7px; border-radius: 6px; margin-right: 4px;
+  }
+  .tier.t0 { background: #1f3a2a; color: #7ee2a8; border: 1px solid #2f6a45; }
+  .tier.t1 { background: #2a2a1f; color: #e2d47e; border: 1px solid #5a5a2f; }
+  .tier.t2 { background: #1a2a3a; color: #9ac8e8; border: 1px solid #2f4a6a; }
+  .tier.t3 { background: #24313d; color: #9ab; border: 1px solid #2a3a48; }
+  .tier.tn { background: #2a1a1a; color: #f0a8a8; border: 1px solid #6a2a2a; }
+
+  .stat-def-box {
+    background: #0f1720; border-left: 3px solid #9ac8e8;
+    padding: 8px 10px; border-radius: 0 8px 8px 0;
+    font-size: 12px; line-height: 1.6; color: #b8c8d8;
+    margin-top: 6px;
+  }
+  .stat-def-box b { color: #e8eef5; }
+
+  .replace-card {
+    background: #1e2a36; border: 1px solid #2a3a48; border-radius: 10px;
+    padding: 12px; margin-bottom: 10px;
+  }
+  .replace-card.priority {
+    border-color: #e2d47e;
+    background: #2a2a1f;
+  }
+  .replace-card .rc-head {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 8px;
+  }
+  .replace-card .rc-title { font-size: 14px; font-weight: 600; }
+  .replace-card .rc-score { font-size: 12px; color: #9ab; }
+  .replace-card .rc-body { font-size: 13px; line-height: 1.7; color: #b8c8d8; }
+  .replace-card .rc-body b { color: #e8eef5; }
+  .replace-card .rc-tag {
+    display: inline-block; font-size: 11px; padding: 2px 7px; border-radius: 6px;
+    background: #24313d; color: #9ab; margin-right: 4px;
+  }
+
+  .candidate {
+    background: #1e2a36; border: 1px solid #2a3a48; border-radius: 10px;
+    padding: 12px; margin-bottom: 10px;
+  }
+  .candidate.active {
+    border-color: #e2d47e;
+    background: #2a2a1f;
+  }
+  .candidate .c-head {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 8px; flex-wrap: wrap; gap: 6px;
+  }
+  .candidate .c-title { font-size: 14px; font-weight: 600; }
+  .candidate .c-score { font-size: 12px; color: #9ab; }
+  .candidate .c-body { font-size: 13px; line-height: 1.7; color: #b8c8d8; }
+  .candidate .c-rec {
+    background: #1a2530; border-left: 3px solid #9ac8e8;
+    padding: 6px 10px; border-radius: 0 6px 6px 0;
+    font-size: 12px; color: #b8c8d8; margin: 8px 0;
+  }
+  .candidate .c-slot-row {
+    display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px;
+  }
+  .candidate .c-slot-btn {
+    padding: 5px 10px; font-size: 12px;
+    background: #24313d; border: 1px solid #2a3a48; border-radius: 6px;
+    color: #e8eef5; cursor: pointer;
+  }
+  .candidate .c-slot-btn:hover { background: #2f3f4d; }
+  .candidate .c-slot-btn.rec {
+    background: #2a4a6a; border-color: #4a6a8a;
+  }
+  .candidate .c-slot-btn.selected {
+    background: #2a6df4; border-color: #2a6df4; color: #fff; font-weight: 600;
+  }
+
+  /* 资源规划 */
+  .resource-row {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 10px 12px; border-radius: 10px; margin-bottom: 8px;
+    background: #1e2a36; border: 1px solid #2a3a48; font-size: 13px;
+  }
+  .resource-row.top1 {
+    border-color: #7ee2a8;
+    background: #1f3a2a;
+  }
+  .resource-row.dim {
+    opacity: 0.65;
+  }
+  .resource-row .r-rank {
+    font-size: 12px; font-weight: 700;
+    min-width: 24px; text-align: center;
+    padding: 3px 6px; border-radius: 6px;
+    background: #24313d; color: #9ab;
+  }
+  .resource-row.top1 .r-rank { background: #2f6a45; color: #a8e8c0; }
+  .resource-row .r-name { flex: 1; min-width: 200px; font-weight: 600; }
+  .resource-row .r-gain {
+    font-size: 13px; font-weight: 600;
+  }
+  .resource-row .r-tag {
+    font-size: 11px; padding: 2px 7px; border-radius: 6px;
+  }
+</style>
+</head>
+<body>
+
+<h1>疯狂水世界 · 分析器</h1>
+<div class="sub">场景化评分 · 候选池对比 · 资源规划</div>
+
+<div class="scenario-bar">
+  <label>场景：</label>
+  <select id="scenarioSelect" onchange="onScenarioChange()">
+    <option value="通用">通用（默认）</option>
+    <option value="PVP竞技场">PVP 竞技场</option>
+    <option value="世界BOSS">世界 BOSS / 深渊</option>
+    <option value="深渊爬塔">深渊爬塔</option>
+    <option value="海域探索">海域探索</option>
+    <option value="主线推图">主线推图</option>
+  </select>
+</div>
+
+<div class="tabs">
+  <div class="tab active" data-panel="byHero">按英雄查</div>
+  <div class="tab" data-panel="byStat">按词条反查</div>
+  <div class="tab" data-panel="myBag">配置和对比</div>
+  <div class="tab" data-panel="team">阵容玩法</div>
+  <div class="tab" data-panel="backup">备份</div>
+</div>
+
+<div class="panel active" id="byHero">
+  <div class="chips" id="heroChips"></div>
+  <div id="heroResult"><div class="empty">点一个英雄查看优先级</div></div>
+</div>
+
+<div class="panel" id="byStat">
+  <div class="chips" id="statChips"></div>
+  <div id="statResult"><div class="empty">点一个词条查看最适合给谁</div></div>
+</div>
+
+<div class="panel" id="myBag">
+  <div class="chips" id="bagHeroChips"></div>
+  <div id="bagResult"></div>
+</div>
+
+<div class="panel" id="team">
+  <div class="form-block">
+    <h3>玩法模式</h3>
+    <div class="field">
+      <select id="teamMode">
+        <option value="preset">主流阵容模板</option>
+        <option value="free">自由选择英雄</option>
+      </select>
+    </div>
+  </div>
+
+  <div id="presetMode">
+    <div class="form-block">
+      <h3>选择一套主流阵容</h3>
+      <div class="field">
+        <select id="presetTeam"></select>
+      </div>
+    </div>
+    <div id="presetResult"></div>
+  </div>
+
+  <div id="freeMode" style="display:none">
+    <div class="form-block">
+      <h3>选择 5 个英雄</h3>
+      <div class="chips" id="freeHeroChips"></div>
+    </div>
+    <div id="freeResult"></div>
+  </div>
+</div>
+
+<div class="panel" id="backup">
+  <div class="form-block">
+    <h3>导出配置</h3>
+    <div class="field">
+      <label>点下面按钮生成备份文字，复制存到微信/备忘录/电脑</label>
+      <button class="btn export" onclick="doExport()">生成备份文字</button>
+    </div>
+    <div class="field">
+      <label>备份文字（可全选复制）</label>
+      <textarea id="exportArea" placeholder="点上面按钮生成..." readonly></textarea>
+    </div>
+    <button class="btn ghost" onclick="copyExport()">复制备份文字</button>
+  </div>
+
+  <div class="form-block">
+    <h3>导入配置</h3>
+    <div class="field">
+      <label>把备份文字粘贴到这里</label>
+      <textarea id="importArea" placeholder="粘贴备份文字..."></textarea>
+    </div>
+    <button class="btn import" onclick="doImport()">导入并覆盖当前数据</button>
+    <div class="tip warn">⚠️ 导入会覆盖当前手机上的所有配置数据。建议先导出备份，再导入。</div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   规则区
+   ============================================================ */
+
+const MAX_BADGES = 4;
+const MAX_GEARS = 3;
+
+const FLAT_STATS = ['护甲', '护甲穿透', '抗性', '抗性穿透'];
+const DILUTABLE_STATS = ['伤害增加'];
+
+const STAT_THRESHOLDS = {
+  "暴击":     { cap: 100, warn: 60, note: "超过 100% 溢出转暴击倍率，收益下降" },
+  "命中":     { cap: 100, warn: 60, note: "超过 100% 按 50% 转普攻伤害" },
+  "闪避":     { cap: 75,  warn: 50, note: "最多把敌人命中削减到 25%，超过 75% 溢出" },
+  "暴击抵抗": { cap: 50,  warn: 30, note: "每点降 1% 受到的暴击伤害，最多把暴击伤害降到 150%" },
+  "伤害减免": { cap: 75,  warn: 50, note: "最多降为原伤害的 25%（即 75% 减伤上限）" }
+};
+
+/* 场景系数：不同场景对词条权重做调整 */
+const SCENARIOS = {
+  "通用": {},
+  "PVP竞技场": {
+    "暴击抵抗": 1.5,
+    "控制抗性": 1.5,
+    "生命": 1.3,
+    "伤害减免": 1.3,
+    "闪避": 1.3,
+    "暴击": 0.85,
+    "攻击速度": 0.9
+  },
+  "世界BOSS": {
+    "生命回收": 1.4,
+    "攻击": 1.2,
+    "暴击": 1.2,
+    "暴击伤害": 1.2,
+    "攻击速度": 1.2,
+    "护甲穿透": 1.1,
+    "抗性穿透": 1.1,
+    "闪避": 0.7,
+    "暴击抵抗": 0.8,
+    "控制抗性": 0.8
+  },
+  "深渊爬塔": {
+    "生命": 1.4,
+    "伤害减免": 1.4,
+    "护甲": 1.3,
+    "抗性": 1.3,
+    "生命恢复": 1.3,
+    "暴击抵抗": 1.2,
+    "闪避": 1.2,
+    "攻击速度": 0.9
+  },
+  "海域探索": {
+    "攻击": 1.1,
+    "技能强度": 1.1,
+    "暴击": 1.1,
+    "命中": 1.1
+  },
+  "主线推图": {
+    "攻击": 1.1,
+    "技能强度": 1.1
+  }
+};
+
+let currentScenario = "通用";
+
+function onScenarioChange() {
+  const sel = document.getElementById('scenarioSelect');
+  currentScenario = sel.value;
+  /* 刷新当前可见页面 */
+  if (activeBagHero) renderBag(activeBagHero);
+}
+
+function getScenarioMultiplier(statName) {
+  const s = SCENARIOS[currentScenario] || {};
+  return s[statName] || 1.0;
+}
+
+const GEAR_FIXED_FIELDS = {
+  "枪械": ["atk", "skill"],
+  "兵刃": ["atk", "skill"],
+  "防具": ["hp", "armor", "resist"]
+};
+
+const GEAR_HAS_PIERCE = ["枪械", "兵刃"];
+
+const GEAR_BASE_WEIGHT = {
+  "枪械": { atk: 1.0, skill: 1.0 },
+  "兵刃": { atk: 1.0, skill: 1.0 },
+  "防具": { hp: 1.0, armor: 1.0, resist: 1.0 }
+};
+
+const STAT_DEFS = {
+  "攻击":       "提高普攻造成的伤害，有部分英雄的技能也会受到此值增益。总攻击 = 基础攻击 × (1 + 百分比攻击加成) + 额外攻击。",
+  "技能强度":   "增强多数英雄技能效果（包括伤害、治疗、护盾等）。总技能强度 = 基础技能强度 × (1 + 百分比技能强度加成) + 额外技能强度。",
+  "攻击速度":   "英雄普攻的速度，即每秒普攻的次数。",
+  "暴击":       "提高暴击几率，基础暴击倍率为 200%。暴击会受到暴击抵抗的削减，削减后超过 100% 的暴击将转化为等额暴击倍率。",
+  "暴击伤害":   "提高暴击时的伤害倍率。配合暴击使用。暴击超过 100% 后溢出部分会自动转暴伤。",
+  "命中":       "普攻击中敌人的概率。命中会受到闪避的削减，削减后超过 100% 的命中将转化为普攻伤害，转化倍率为 50%。",
+  "伤害增加":   "提高英雄造成的任意类型的伤害。这是通用增伤，对物理和能量都生效，收益稳定，但容易被其他增伤渠道稀释。不是虚战。",
+  "护甲穿透":   "降低敌人的护甲，从而提高敌人受到的物理伤害。只对物理伤害生效。",
+  "抗性穿透":   "降低敌人的抗性，从而提高敌人受到的能量伤害。只对能量伤害生效。",
+  "生命回收":   "每次造成伤害后，恢复此次伤害一定比例的生命。被重伤克制，不要堆太高。",
+  "生命":       "总生命 = 基础生命 × (1 + 百分比生命加成) + 额外生命。",
+  "伤害减免":   "降低英雄受到的任意类型的伤害，最多降为原伤害的 25%（即 75% 减伤上限）。",
+  "护甲":       "令英雄受到的物理伤害降低 3.5%（攻击方护甲穿透为 0 时，护甲换算物理减伤为 3.5%，此值会受到攻击者护甲穿透修正）。",
+  "抗性":       "令英雄受到的能量伤害降低 2.1%（攻击方抗性穿透为 0 时，抗性换算能量减伤为 2.1%，此值会受到攻击者抗性穿透修正）。",
+  "暴击抵抗":   "减少自身被暴击概率，并降低所受暴击伤害。攻击者最终暴击 = 攻击者暴击 - 自身暴击抵抗，每点暴击抵抗可降低 1% 受到的暴击伤害，最多将暴击伤害降为 150%。",
+  "闪避":       "削减敌人命中（至多将敌人命中削减至 25%，溢出值转化为普攻伤害减免），增加敌人普通攻击及附带特效落空的几率。落空的普攻只能回复 7 点能量（基础为 10 点）。",
+  "生命恢复":   "战斗中，每 3 秒恢复一定比例的最大生命。",
+  "控制抗性":   "减少自身被控制的时间。",
+  "冷却缩减":   "缩短技能冷却时间。",
+  "初始能量":   "开局时额外获得的能量，让技能更快释放。"
+};
+
+const HEROES = {
+  "大嘴山姆": {
+    role: "坦克", damageType: "物理", outputType: "普攻",
+    position: "前排承伤/控场",
+    badge: ["闪避", "生命", "暴击抵抗", "护甲", "抗性"],
+    gear:  ["闪避", "生命", "暴击抵抗", "护甲", "抗性", "伤害减免"],
+    parts: ["防具"],
+    baseWeight: { hp: 1.0, atk: 0.2, skill: 0.2 },
+    tip: "闪避堆到 75 左右收益最高，之后补 50 左右暴击抵抗应对爆发，剩下堆生命。"
+  },
+  "机器屠夫": {
+    role: "坦克", damageType: "物理", outputType: "普攻",
+    position: "副坦/切后钩子",
+    badge: ["生命", "伤害减免", "护甲", "抗性", "暴击抵抗", "闪避"],
+    gear:  ["生命", "伤害减免", "护甲", "抗性", "暴击抵抗"],
+    parts: ["防具"],
+    baseWeight: { hp: 1.0, atk: 0.2, skill: 0.2 },
+    tip: "站得住才能钩到人。生命、减伤、双抗优先。"
+  },
+  "不死州长": {
+    role: "坦克", damageType: "物理", outputType: "普攻",
+    position: "副坦/炮灰",
+    badge: ["生命", "闪避", "生命恢复", "护甲", "抗性", "控制抗性"],
+    gear:  ["生命", "闪避", "护甲", "抗性", "生命恢复"],
+    parts: ["防具"],
+    baseWeight: { hp: 1.0, atk: 0.2, skill: 0.2 },
+    tip: "炮灰/承伤定位，活着多抗几下就是贡献。"
+  },
+  "巨石绿魔": {
+    role: "坦克", damageType: "物理", outputType: "普攻",
+    position: "前排承伤",
+    badge: ["生命", "伤害减免", "护甲", "抗性", "暴击抵抗"],
+    gear:  ["生命", "伤害减免", "护甲", "抗性"],
+    parts: ["防具"],
+    baseWeight: { hp: 1.0, atk: 0.2, skill: 0.2 },
+    tip: "纯肉前排，生命和减伤优先。"
+  },
+  "终结者": {
+    role: "坦克", damageType: "物理", outputType: "普攻",
+    position: "副坦/反伤",
+    badge: ["伤害减免", "生命", "抗性", "生命回收"],
+    gear:  ["伤害减免", "生命", "抗性", "生命回收"],
+    parts: ["防具"],
+    baseWeight: { hp: 1.0, atk: 0.2, skill: 0.2 },
+    tip: "深渊专用副坦，减伤和生命优先。"
+  },
+  "自由斗士": {
+    role: "坦克", damageType: "物理", outputType: "普攻",
+    position: "主肉/召唤流",
+    badge: ["生命", "伤害减免", "护甲", "抗性"],
+    gear:  ["生命", "伤害减免", "护甲", "抗性"],
+    parts: ["防具"],
+    baseWeight: { hp: 1.0, atk: 0.2, skill: 0.2 },
+    tip: "召唤流主肉，生命和减伤优先。"
+  },
+  "海底之王": {
+    role: "坦克", damageType: "物理", outputType: "普攻",
+    position: "功能性前排/能量封锁",
+    badge: ["生命", "暴击抵抗", "伤害减免", "护甲", "抗性"],
+    gear:  ["生命", "暴击抵抗", "伤害减免", "护甲", "抗性"],
+    parts: ["防具"],
+    baseWeight: { hp: 1.0, atk: 0.2, skill: 0.2 },
+    tip: "S5超凡兄弟会战士，自带高暴击抵抗和开局护盾，主打断敌方能量。"
+  },
+  "变形Y哥": {
+    role: "坦克", damageType: "物理", outputType: "普攻",
+    position: "前排承伤",
+    badge: ["生命", "伤害减免", "护甲", "抗性"],
+    gear:  ["生命", "伤害减免", "护甲", "抗性"],
+    parts: ["防具"],
+    baseWeight: { hp: 1.0, atk: 0.2, skill: 0.2 },
+    tip: "纯肉前排，生命和减伤优先。"
+  },
+
+  "铁腿红魔": {
+    role: "战士", damageType: "物理", outputType: "混合",
+    position: "切后/物理输出",
+    badge: ["攻击", "暴击", "护甲穿透", "生命", "伤害减免", "伤害增加"],
+    gear:  ["攻击", "护甲穿透", "暴击", "生命", "伤害减免", "伤害增加"],
+    parts: ["兵刃", "枪械"],
+    baseWeight: { hp: 0.5, atk: 1.0, skill: 0.3 },
+    tip: "切后刺客，物理输出。攻击和护甲穿透优先，留生命/减伤保证活着出来。伤害增加属于通用增伤，放在后面补。"
+  },
+  "小丑杰克": {
+    role: "战士", damageType: "物理", outputType: "普攻",
+    position: "爆发切后",
+    badge: ["暴击", "攻击", "攻速", "护甲穿透", "生命"],
+    gear:  ["攻击", "护甲穿透", "暴击", "攻速", "生命"],
+    parts: ["兵刃", "枪械"],
+    baseWeight: { hp: 0.4, atk: 1.0, skill: 0.3 },
+    tip: "爆发切后，物理输出。暴击和攻击优先，3星可用4星质变。"
+  },
+  "一龙": {
+    role: "战士", damageType: "物理", outputType: "技能",
+    position: "群伤/输出",
+    badge: ["攻击", "技能强度", "护甲穿透", "暴击", "生命"],
+    gear:  ["攻击", "技能强度", "护甲穿透", "生命"],
+    parts: ["兵刃", "枪械"],
+    baseWeight: { hp: 0.5, atk: 0.8, skill: 0.5 },
+    tip: "群伤英雄，物理技能输出，攻击和技能强度兼顾，护甲穿透加成物理伤害。"
+  },
+  "北境大帝": {
+    role: "战士", damageType: "物理", outputType: "混合",
+    position: "功能性前排/切后",
+    badge: ["攻击", "暴击", "护甲穿透", "生命", "伤害减免"],
+    gear:  ["攻击", "护甲穿透", "生命", "伤害减免"],
+    parts: ["兵刃", "枪械"],
+    baseWeight: { hp: 0.5, atk: 1.0, skill: 0.2 },
+    tip: "功能性前排，打乱敌方阵型补控制，攻击和护甲穿透优先。"
+  },
+  "铁肘老大": {
+    role: "战士", damageType: "物理", outputType: "普攻",
+    position: "超凡输出/闪避克星",
+    badge: ["攻击", "暴击", "护甲穿透", "攻速", "生命"],
+    gear:  ["攻击", "护甲穿透", "暴击", "攻速", "生命"],
+    parts: ["兵刃", "枪械"],
+    baseWeight: { hp: 0.4, atk: 1.0, skill: 0.2 },
+    tip: "S5超凡射手，自带必中和破甲，攻击和护甲穿透优先。"
+  },
+  "战神小布": {
+    role: "战士", damageType: "物理", outputType: "混合",
+    position: "全能前排/群体破甲",
+    badge: ["攻击", "暴击", "暴击伤害", "生命", "伤害减免"],
+    gear:  ["攻击", "暴击", "生命", "伤害减免"],
+    parts: ["兵刃", "枪械"],
+    baseWeight: { hp: 0.6, atk: 1.0, skill: 0.2 },
+    tip: "S6超凡战士，大招30能量倍率高，攻击和暴击优先，留生存。"
+  },
+  "拳王肯爷": {
+    role: "战士", damageType: "物理", outputType: "普攻",
+    position: "闪避流功能性前排",
+    badge: ["闪避", "生命", "伤害减免", "抗性"],
+    gear:  ["闪避", "生命", "伤害减免", "抗性"],
+    parts: ["兵刃", "防具"],
+    baseWeight: { hp: 0.8, atk: 0.4, skill: 0.2 },
+    tip: "闪避队核心，开大后闪避极高，削减敌方能量回复。闪避和生命优先。"
+  },
+
+  "兰博": {
+    role: "射手", damageType: "物理", outputType: "普攻",
+    position: "主C/持续爆发",
+    badge: ["暴击", "攻击速度", "攻击", "生命回收", "命中"],
+    gear:  ["暴击", "攻击速度", "攻击", "生命回收", "命中"],
+    parts: ["兵刃", "枪械"],
+    baseWeight: { hp: 0.3, atk: 1.0, skill: 0.2 },
+    tip: "国家队主C，纯普攻物理输出。暴击和攻速优先，命中溢出可转普攻伤害。生命回收保留20%左右即可。"
+  },
+  "鬼火杰森": {
+    role: "射手", damageType: "能量", outputType: "技能",
+    position: "持续燃烧/前排输出",
+    badge: ["技能强度", "抗性穿透", "暴击", "生命", "伤害增加"],
+    gear:  ["技能强度", "抗性穿透", "暴击", "生命", "伤害减免"],
+    parts: ["兵刃", "枪械"],
+    baseWeight: { hp: 0.3, atk: 0.5, skill: 1.0 },
+    tip: "技能挂燃烧是主要输出，能量伤害。技能强度和抗性穿透优先。"
+  },
+  "雾隐千代": {
+    role: "射手", damageType: "物理", outputType: "混合",
+    position: "坦克杀/主C杀手",
+    badge: ["攻击", "暴击", "攻速", "技能强度", "生命"],
+    gear:  ["攻击", "暴击", "攻速", "技能强度", "生命"],
+    parts: ["兵刃", "枪械"],
+    baseWeight: { hp: 0.3, atk: 0.8, skill: 0.6 },
+    tip: "S2射手，1技能混伤（物理+技能），攻击为主，技能强度为辅。三星可用，专武40级质变。"
+  },
+  "戴安娜": {
+    role: "射手", damageType: "物理", outputType: "混合",
+    position: "破甲/功能性前排",
+    badge: ["攻击", "护甲穿透", "暴击", "生命", "伤害减免"],
+    gear:  ["攻击", "护甲穿透", "生命", "伤害减免"],
+    parts: ["兵刃", "枪械"],
+    baseWeight: { hp: 0.5, atk: 0.8, skill: 0.3 },
+    tip: "范围削甲并眩晕，配合刺客速秒敌方前排。物理输出，护甲穿透有用。"
+  },
+  "深海猎手": {
+    role: "射手", damageType: "物理", outputType: "普攻",
+    position: "S5超凡输出",
+    badge: ["攻击", "暴击", "攻速", "护甲穿透", "生命"],
+    gear:  ["攻击", "护甲穿透", "暴击", "攻速", "生命"],
+    parts: ["兵刃", "枪械"],
+    baseWeight: { hp: 0.4, atk: 1.0, skill: 0.2 },
+    tip: "S5超凡射手，物理输出，攻击和暴击优先。"
+  },
+
+  "巫师老侃": {
+    role: "法师", damageType: "能量", outputType: "技能",
+    position: "辅助/全队增伤",
+    badge: ["技能强度", "生命", "伤害减免", "冷却缩减", "控制抗性"],
+    gear:  ["技能强度", "生命", "伤害减免", "冷却缩减"],
+    parts: ["枪械", "防具"],
+    baseWeight: { hp: 0.8, atk: 0.2, skill: 1.0 },
+    tip: "国家队核心辅助，能量辅助。技能强度和生命优先，保证技能循环和站场。"
+  },
+  "神父欧玛": {
+    role: "法师", damageType: "能量", outputType: "技能",
+    position: "辅助/纯奶",
+    badge: ["技能强度", "生命", "伤害减免", "冷却缩减"],
+    gear:  ["技能强度", "生命", "伤害减免", "冷却缩减"],
+    parts: ["枪械", "防具"],
+    baseWeight: { hp: 0.8, atk: 0.2, skill: 1.0 },
+    tip: "召唤流三巨头之一，当前版本唯一纯奶。技能强度和生命优先。"
+  },
+  "蜜雪儿": {
+    role: "法师", damageType: "能量", outputType: "技能",
+    position: "控场/辅助",
+    badge: ["技能强度", "冷却缩减", "生命", "抗性", "伤害减免"],
+    gear:  ["技能强度", "生命", "抗性", "伤害减免"],
+    parts: ["枪械", "防具"],
+    baseWeight: { hp: 0.8, atk: 0.2, skill: 1.0 },
+    tip: "控场法师，技能强度和冷却缩减优先。"
+  },
+  "米娅": {
+    role: "法师", damageType: "能量", outputType: "技能",
+    position: "群控辅助",
+    badge: ["技能强度", "生命", "伤害减免", "冷却缩减", "控制抗性"],
+    gear:  ["技能强度", "生命", "伤害减免", "冷却缩减"],
+    parts: ["枪械", "防具"],
+    baseWeight: { hp: 0.8, atk: 0.2, skill: 1.0 },
+    tip: "群控辅助，技能强度和生命优先，冷却缩减保证控场频率。"
+  },
+  "雷教授": {
+    role: "法师", damageType: "能量", outputType: "技能",
+    position: "纯法输出/群伤",
+    badge: ["技能强度", "抗性穿透", "暴击", "生命", "伤害增加"],
+    gear:  ["技能强度", "抗性穿透", "暴击", "生命", "伤害增加"],
+    parts: ["枪械", "防具"],
+    baseWeight: { hp: 0.4, atk: 0.5, skill: 1.0 },
+    tip: "纯输出法师，能量伤害。技能强度第一，抗性穿透有效。零氪可白嫖三星。"
+  },
+  "蜥蜴侠": {
+    role: "法师", damageType: "能量", outputType: "技能",
+    position: "纯法输出/远程范围",
+    badge: ["技能强度", "抗性穿透", "暴击", "生命", "伤害增加"],
+    gear:  ["技能强度", "抗性穿透", "暴击", "生命"],
+    parts: ["枪械", "防具"],
+    baseWeight: { hp: 0.5, atk: 0.4, skill: 1.0 },
+    tip: "开大变身远程范围攻击，能量伤害。技能强度优先，抗性穿透有效。"
+  },
+  "机修萝莉": {
+    role: "法师", damageType: "能量", outputType: "技能",
+    position: "召唤流/副坦",
+    badge: ["技能强度", "生命", "伤害减免", "护甲", "抗性"],
+    gear:  ["技能强度", "生命", "伤害减免", "护甲", "抗性"],
+    parts: ["枪械", "防具"],
+    baseWeight: { hp: 0.8, atk: 0.2, skill: 1.0 },
+    tip: "召唤流三巨头之一，召唤物抗伤。技能强度和生命优先。"
+  },
+  "李忠诚": {
+    role: "法师", damageType: "能量", outputType: "技能",
+    position: "召唤流/输出承伤",
+    badge: ["技能强度", "攻击", "攻速", "生命", "伤害减免"],
+    gear:  ["技能强度", "攻击", "攻速", "生命"],
+    parts: ["枪械", "防具"],
+    baseWeight: { hp: 0.6, atk: 0.5, skill: 0.8 },
+    tip: "召唤流核心，释放机械狗吸引BOSS攻击。技能强度和攻击兼顾。"
+  },
+  "永生老乔": {
+    role: "法师", damageType: "能量", outputType: "技能",
+    position: "持续伤害/召唤流输出",
+    badge: ["技能强度", "抗性穿透", "暴击", "生命回收", "生命"],
+    gear:  ["技能强度", "抗性穿透", "暴击", "生命回收", "生命"],
+    parts: ["枪械", "防具"],
+    baseWeight: { hp: 0.4, atk: 0.3, skill: 1.0 },
+    tip: "S3持续伤害法师，能量伤害。技能强度优先，抗性穿透和暴击次之。"
+  },
+  "无念铁僧": {
+    role: "法师", damageType: "能量", outputType: "技能",
+    position: "辅助/复活兜底",
+    badge: ["技能强度", "生命", "伤害减免", "冷却缩减"],
+    gear:  ["技能强度", "生命", "伤害减免", "冷却缩减"],
+    parts: ["枪械", "防具"],
+    baseWeight: { hp: 0.8, atk: 0.2, skill: 1.0 },
+    tip: "辅助法师，复活机制给双C兜底。技能强度和生命优先。"
+  },
+  "修女瑟琳娜": {
+    role: "法师", damageType: "能量", outputType: "技能",
+    position: "S6超凡辅助/减伤增伤",
+    badge: ["技能强度", "伤害减免", "生命", "暴击抵抗"],
+    gear:  ["技能强度", "伤害减免", "生命", "暴击抵抗"],
+    parts: ["枪械", "防具"],
+    baseWeight: { hp: 0.8, atk: 0.2, skill: 1.0 },
+    tip: "S6超凡辅助，核心机制是唤魂阵（减伤+增伤+回血+召唤物）。"
+  }
+};
+
+const STAT_GROUPS = {
+  "输出类": ["攻击", "技能强度", "攻击速度", "伤害增加", "护甲穿透", "抗性穿透", "暴击", "暴击伤害", "命中", "初始能量", "生命回收"],
+  "生存类": ["生命", "伤害减免", "护甲", "抗性", "暴击抵抗", "闪避", "生命恢复", "控制抗性"],
+  "功能类": ["冷却缩减"]
+};
+
+const STATS = {
+  "攻击":       { top: ["铁腿红魔", "小丑杰克", "北境大帝", "铁肘老大", "战神小布", "兰博", "雾隐千代", "深海猎手"], second: ["一龙", "戴安娜", "李忠诚"], reason: "物理普攻/技能核心。能量型英雄（鬼火杰森、法师）攻击收益较低。" },
+  "技能强度":   { top: ["鬼火杰森", "巫师老侃", "蜜雪儿", "雷教授", "米娅", "永生老乔", "修女瑟琳娜", "蜥蜴侠", "机修萝莉", "神父欧玛", "无念铁僧"], second: ["一龙", "雾隐千代", "李忠诚"], reason: "能量/技能型输出与辅助核心。纯普攻英雄（兰博）技能强度收益低。" },
+  "攻击速度":   { top: ["兰博", "小丑杰克", "铁肘老大", "深海猎手"],       second: ["雾隐千代", "铁腿红魔"],   reason: "普攻型英雄核心，叠暴击/叠燃烧/持续输出。" },
+  "伤害增加":   { top: ["铁腿红魔", "鬼火杰森", "雷教授", "兰博", "小丑杰克"], second: ["机器屠夫"], reason: "通用增伤，对物理和能量伤害都生效。收益稳定但容易被其他增伤渠道稀释。不是虚战，但优先级低于攻击和穿透。" },
+  "护甲穿透":   { top: ["铁腿红魔", "铁肘老大", "北境大帝"],       second: ["小丑杰克", "戴安娜", "深海猎手", "一龙"], reason: "物理伤害专用，降低敌人护甲。能量型英雄（鬼火杰森、法师）吃不到。" },
+  "抗性穿透":   { top: ["鬼火杰森", "雷教授", "永生老乔", "蜥蜴侠"], second: ["蜜雪儿", "米娅", "巫师老侃"],   reason: "能量伤害专用，降低敌人抗性。物理型英雄（铁腿红魔、兰博）吃不到。" },
+  "暴击":       { top: ["铁腿红魔", "鬼火杰森", "雷教授", "兰博", "小丑杰克", "铁肘老大", "战神小布", "雾隐千代", "深海猎手"], second: [],            reason: "爆发输出。超过100%后溢出转暴伤，堆到100%后收益下降。" },
+  "暴击伤害":   { top: ["雷教授", "战神小布"],         second: ["铁腿红魔", "鬼火杰森"],   reason: "爆发输出。暴击超过100%后溢出转暴伤，配合暴击更有效。" },
+  "命中":       { top: ["兰博", "铁肘老大", "深海猎手"], second: ["铁腿红魔", "雾隐千代"],            reason: "防闪避。超过100%后按50%转化为普攻伤害。" },
+  "初始能量":   { top: ["鬼火杰森", "巫师老侃", "蜜雪儿", "米娅"], second: ["机器屠夫"],   reason: "开局技能更快。" },
+  "生命回收":   { top: ["鬼火杰森", "兰博"],       second: [],            reason: "造成伤害后按比例回血，被重伤克制，别堆太高。" },
+  "生命":       { top: ["大嘴山姆", "不死州长", "机器屠夫", "巫师老侃", "蜜雪儿", "米娅", "巨石绿魔", "终结者", "自由斗士", "海底之王", "变形Y哥", "神父欧玛", "机修萝莉", "修女瑟琳娜", "无念铁僧", "拳王肯爷"], second: ["铁腿红魔", "鬼火杰森", "雷教授", "李忠诚"], reason: "前排/辅助保命，输出兜底。" },
+  "伤害减免":   { top: ["机器屠夫", "巫师老侃", "米娅", "终结者", "巨石绿魔", "自由斗士", "海底之王", "变形Y哥", "神父欧玛", "机修萝莉", "修女瑟琳娜", "无念铁僧", "拳王肯爷"], second: ["大嘴山姆", "铁腿红魔", "鬼火杰森", "不死州长", "蜜雪儿", "雷教授"], reason: "通用防御，最多降为原伤害的 25%（即 75% 减伤上限）。" },
+  "护甲":       { top: ["大嘴山姆", "机器屠夫", "巨石绿魔"], second: ["不死州长", "自由斗士", "变形Y哥"], reason: "物理减伤，每点约 3.5%（攻击方护甲穿透会修正此值）。" },
+  "抗性":       { top: ["大嘴山姆", "机器屠夫", "蜜雪儿", "巨石绿魔"], second: ["不死州长", "自由斗士", "变形Y哥"], reason: "能量减伤，每点约 2.1%（攻击方抗性穿透会修正此值）。" },
+  "暴击抵抗":   { top: ["大嘴山姆", "海底之王"],       second: ["机器屠夫", "终结者", "修女瑟琳娜"],   reason: "应对爆发。每点降 1% 受到的暴击伤害，最多把暴击伤害降到 150%。" },
+  "闪避":       { top: ["大嘴山姆", "拳王肯爷"],       second: ["不死州长", "机器屠夫"], reason: "坦克核心生存词条。最多把敌人命中削减到 25%。" },
+  "生命恢复":   { top: ["不死州长", "终结者"],       second: ["大嘴山姆", "机器屠夫"], reason: "每 3 秒回一定比例最大生命，长站场收益高。" },
+  "控制抗性":   { top: ["机器屠夫", "巫师老侃", "米娅"], second: ["不死州长", "大嘴山姆"], reason: "减少被控时间。" },
+  "冷却缩减":   { top: ["巫师老侃", "蜜雪儿", "米娅", "神父欧玛", "无念铁僧"], second: ["鬼火杰森", "雷教授"],   reason: "技能循环更快（辅助/法师核心）。" }
+};
+
+function statBase(index) {
+  if (index === 0) return 10;
+  if (index === 1) return 7;
+  if (index === 2) return 4;
+  return 2;
+}
+
+function statTypeMultiplier(hero, statName) {
+  if (!hero) return 1;
+  const dmg = hero.damageType;
+  const out = hero.outputType;
+
+  if (statName === '护甲穿透' && dmg === '能量') return 0.3;
+  if (statName === '抗性穿透' && dmg === '物理') return 0.3;
+  if (statName === '攻击' && out === '技能') return 0.6;
+  if (statName === '技能强度' && out === '普攻') return 0.5;
+  if (statName === '攻击速度' && out === '技能') return 0.4;
+  if ((statName === '命中' || statName === '生命回收') && out === '技能') return 0.7;
+
+  return 1;
+}
+
+function scoreStats(heroName, stats, quality, part, itemType) {
+  const h = HEROES[heroName];
+  if (!h) return 0;
+  const list = itemType === 'badge' ? h.badge : h.gear;
+  let score = 0;
+  let partPenalty = 1;
+  if (itemType === 'gear' && part) {
+    partPenalty = h.parts.includes(part) ? 1 : 0.5;
+  }
+  stats.forEach(item => {
+    const name = ALIAS_MAP[item.name] || item.name;
+    const idx = list.indexOf(name);
+    if (idx >= 0) {
+      const v = item.pct || 1;
+      let s = statBase(idx) * (v / 100) * quality * partPenalty;
+      s *= statTypeMultiplier(h, name);
+      s *= getScenarioMultiplier(name);
+      score += s;
+    }
+  });
+  return score;
+}
+
+function scoreBadgeBase(heroName, base) {
+  const h = HEROES[heroName];
+  if (!h) return 0;
+  const w = h.baseWeight;
+  const hp = base.hp || 0;
+  const atk = base.atk || 0;
+  const skill = base.skill || 0;
+  return hp * w.hp + atk * w.atk + skill * w.skill;
+}
+
+function scoreGearBase(heroName, part, base) {
+  const fields = GEAR_FIXED_FIELDS[part] || [];
+  const weights = GEAR_BASE_WEIGHT[part] || {};
+  let score = 0;
+  fields.forEach(f => {
+    const v = base[f] || 0;
+    const w = weights[f] || 1;
+    score += v * w;
+  });
+  if (base.pierceType && base.pierceValue) {
+    score += (base.pierceValue / 100) * 2;
+  }
+  return score;
+}
+
+function scoreBase(heroName, itemType, part, base) {
+  if (itemType === 'badge') return scoreBadgeBase(heroName, base || { hp:0, atk:0, skill:0 });
+  return scoreGearBase(heroName, part, base || {});
+}
+
+function scoreItem(heroName, stats, quality, part, itemType, base) {
+  return scoreStats(heroName, stats, quality, part, itemType) + scoreBase(heroName, itemType, part, base);
+}
+
+/* ============================================================
+   存储
+   ============================================================ */
+
+const STORAGE_KEY = 'crazysw_config_v16';
+const CANDIDATE_KEY = 'crazysw_candidates_v1';
+const LEGACY_KEYS = ['crazysw_config_v15', 'crazysw_config_v14', 'crazysw_config_v13', 'crazysw_config_v12', 'crazysw_config_v11', 'crazysw_config_v10', 'crazysw_config_v9', 'crazysw_config_v8', 'crazysw_config_v7', 'crazysw_config_v6', 'crazysw_config_v5', 'crazysw_config_v4', 'crazysw_config_v3', 'crazysw_config_v2', 'crazysw_config_v1'];
+
+const ALIAS_MAP = {
+  '攻击力': '攻击',
+  '生命值': '生命',
+  '减伤': '伤害减免',
+  '暴伤': '暴击伤害',
+  '增伤': '伤害增加',
+  '攻速': '攻击速度',
+  '吸血': '生命回收',
+  '韧性': '控制抗性',
+  '格挡': '伤害减免',
+  '效果命中': '命中'
+};
+
+const DEFAULT_DATA = {
+  "铁腿红魔": {
+    badges: {
+      "1": { quality: 1.3, stats: [{name:"暴击抵抗", pct:6.75}], base: {hp:2863, atk:572, skill:76} },
+      "2": { quality: 1,   stats: [{name:"护甲穿透", pct:24}],   base: {hp:1136, atk:227, skill:30} },
+      "3": { quality: 1.3, stats: [{name:"护甲", pct:36}],       base: {hp:2302, atk:460, skill:61} },
+      "4": { quality: 1,   stats: [{name:"暴击抵抗", pct:4.5}],  base: {hp:1476, atk:295, skill:39} }
+    },
+    gears: {
+      "1": { part:"枪械", quality:1.3, stats:[{name:"暴击", pct:3.9},{name:"生命", pct:4.2}], base:{atk:165.4, skill:386, pierceType:"护甲穿透", pierceValue:16.6} },
+      "2": { part:"防具", quality:1.3, stats:[{name:"攻击", pct:7.8}], base:{hp:40082, armor:68, resist:136} },
+      "3": { part:"兵刃", quality:1.3, stats:[{name:"生命回收", pct:3.9},{name:"伤害减免", pct:2.6}], base:{atk:1871, skill:799, pierceType:"护甲穿透", pierceValue:76} }
+    }
+  },
+  "大嘴山姆": {
+    badges: {
+      "1": { quality: 1, stats: [{name:"生命", pct:2.4}], base: {hp:4771, atk:15, skill:15} },
+      "2": { quality: 1, stats: [{name:"闪避", pct:2.4}], base: {hp:4771, atk:15, skill:15} },
+      "3": { quality: 1, stats: [{name:"生命", pct:2.4}], base: {hp:4771, atk:15, skill:15} },
+      "4": { quality: 1, stats: [{name:"生命", pct:2.1}], base: {hp:3803, atk:12, skill:12} }
+    },
+    gears: {
+      "1": { part:"枪械", quality:1.3, stats:[{name:"生命", pct:3.6},{name:"伤害减免", pct:2.4}], base:{atk:799, skill:1871, pierceType:"护甲穿透", pierceValue:76} },
+      "2": { part:"防具", quality:1.3, stats:[{name:"抗性", pct:36},{name:"暴击抵抗", pct:6.3}], base:{hp:40082, armor:136, resist:68} },
+      "3": { part:"兵刃", quality:1, stats:[{name:"生命", pct:3.6}], base:{atk:1108.5, skill:474, pierceType:"护甲穿透", pierceValue:27.5} }
+    }
+  },
+  "不死州长": {
+    badges: {
+      "1": { quality: 1, stats: [{name:"抗性", pct:24}], base: {hp:4771, atk:15, skill:15} },
+      "2": { quality: 1, stats: [{name:"生命恢复", pct:0.27}], base: {hp:5454, atk:17, skill:17} },
+      "3": { quality: 1, stats: [{name:"生命恢复", pct:0.24}], base: {hp:4771, atk:15, skill:15} },
+      "4": { quality: 1, stats: [{name:"伤害减免", pct:1.6}], base: {hp:4771, atk:15, skill:15} }
+    },
+    gears: {
+      "1": { part:"枪械", quality:1, stats:[{name:"暴击抵抗", pct:5.4}], base:{atk:474, skill:1108.5, pierceType:"护甲穿透", pierceValue:27.5} },
+      "2": { part:"防具", quality:1, stats:[{name:"伤害减免", pct:2.4}], base:{hp:23789.5, armor:22.5, resist:45} },
+      "3": { part:"兵刃", quality:1, stats:[{name:"生命", pct:3.6}], base:{atk:1108.5, skill:474, pierceType:"抗性穿透", pierceValue:27.5} }
+    }
+  },
+  "鬼火杰森": {
+    badges: {
+      "1": { quality: 1, stats: [{name:"暴击抵抗", pct:4.05}], base: {hp:3376, atk:86, skill:86} },
+      "2": { quality: 1, stats: [{name:"技能强度", pct:2.4}], base: {hp:2953, atk:76, skill:76} },
+      "3": { quality: 1, stats: [{name:"技能强度", pct:2.7}], base: {hp:3376, atk:86, skill:86} },
+      "4": { quality: 1, stats: [{name:"暴击", pct:2.7}], base: {hp:3376, atk:86, skill:86} }
+    },
+    gears: {
+      "1": { part:"枪械", quality:1, stats:[{name:"伤害增加", pct:2.4}], base:{atk:504, skill:1178.6, pierceType:"抗性穿透", pierceValue:29.3} },
+      "2": { part:"防具", quality:1.3, stats:[{name:"抗性穿透", pct:36},{name:"抗性", pct:39}], base:{hp:39439.4, armor:133.6, resist:66.8} },
+      "3": { part:"兵刃", quality:1, stats:[{name:"生命回收", pct:3.6}], base:{atk:1108.5, skill:474, pierceType:"抗性穿透", pierceValue:27.5} }
+    }
+  }
+};
+
+function normalizeStats(stats) {
+  return (stats || []).map(s => {
+    if (typeof s === 'string') {
+      return { name: ALIAS_MAP[s] || s, pct: 1 };
+    }
+    return { name: ALIAS_MAP[s.name] || s.name, pct: s.pct || 1 };
+  });
+}
+
+function normalizeItem(item) {
+  const out = { quality: item.quality, stats: normalizeStats(item.stats) };
+  if (item.part) out.part = item.part;
+  out.base = item.base || { hp: 0, atk: 0, skill: 0 };
+  return out;
+}
+
+function arrayToSlots(arr, max) {
+  const slots = {};
+  (arr || []).slice(0, max).forEach((item, i) => {
+    slots[String(i + 1)] = item;
+  });
+  return slots;
+}
+
+function loadConfig() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && Object.keys(parsed).length > 0) return parsed;
+    }
+  } catch(e) {}
+
+  let merged = {};
+  LEGACY_KEYS.forEach(key => {
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) return;
+      const old = JSON.parse(raw);
+      Object.keys(old).forEach(hero => {
+        if (!merged[hero]) merged[hero] = { badges: {}, gears: {} };
+        const v = old[hero];
+        if (Array.isArray(v.badges)) {
+          merged[hero].badges = Object.assign(merged[hero].badges, arrayToSlots(v.badges.map(normalizeItem), MAX_BADGES));
+        } else if (v.badge) {
+          merged[hero].badges['1'] = normalizeItem(v.badge);
+        }
+        if (Array.isArray(v.gears)) {
+          merged[hero].gears = Object.assign(merged[hero].gears, arrayToSlots(v.gears.map(normalizeItem), MAX_GEARS));
+        } else if (v.gear) {
+          merged[hero].gears['1'] = normalizeItem(v.gear);
+        }
+      });
+    } catch(e) {}
+  });
+
+  if (Object.keys(merged).length > 0) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+    return merged;
+  }
+
+  if (Object.keys(DEFAULT_DATA).length > 0) {
+    const copy = JSON.parse(JSON.stringify(DEFAULT_DATA));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(copy));
+    return copy;
+  }
+
+  return {};
+}
+
+function saveConfig(cfg) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
+}
+
+function loadCandidates() {
+  try {
+    const raw = localStorage.getItem(CANDIDATE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch(e) {}
+  return [];
+}
+
+function saveCandidates(list) {
+  localStorage.setItem(CANDIDATE_KEY, JSON.stringify(list));
+}
+
+function getHeroData(name) {
+  if (!CONFIG[name]) CONFIG[name] = { badges: {}, gears: {} };
+  if (!CONFIG[name].badges) CONFIG[name].badges = {};
+  if (!CONFIG[name].gears) CONFIG[name].gears = {};
+  return CONFIG[name];
+}
+
+let CONFIG = loadConfig();
+let CANDIDATES = loadCandidates();
+let editingSlot = { hero: null, type: null, slot: null };
+let candidatePanel = { open: false, type: 'badge', part: '防具' };
+let activeBagHero = null;
+let justReplaced = null;
+let freeSelected = [];
+let candidateTargets = {};
+
+/* ============================================================
+   界面逻辑
+   ============================================================ */
+
+const heroChipsEl = document.getElementById('heroChips');
+const heroResultEl = document.getElementById('heroResult');
+const statChipsEl = document.getElementById('statChips');
+const statResultEl = document.getElementById('statResult');
+const bagHeroChipsEl = document.getElementById('bagHeroChips');
+const bagResultEl = document.getElementById('bagResult');
+
+Object.keys(HEROES).forEach(name => {
+  const c = document.createElement('div');
+  c.className = 'chip hero-chip';
+  c.textContent = name;
+  c.onclick = () => {
+    document.querySelectorAll('#heroChips .chip').forEach(x => x.classList.remove('active'));
+    c.classList.add('active');
+    renderHero(name);
+  };
+  heroChipsEl.appendChild(c);
+});
+
+Object.keys(STATS).forEach(stat => {
+  const c = document.createElement('div');
+  c.className = 'chip';
+  c.textContent = stat;
+  c.onclick = () => {
+    document.querySelectorAll('#statChips .chip').forEach(x => x.classList.remove('active'));
+    c.classList.add('active');
+    renderStat(stat);
+  };
+  statChipsEl.appendChild(c);
+});
+
+Object.keys(HEROES).forEach(name => {
+  const c = document.createElement('div');
+  c.className = 'chip hero-chip';
+  c.textContent = name;
+  c.onclick = () => {
+    document.querySelectorAll('#bagHeroChips .chip').forEach(x => x.classList.remove('active'));
+    c.classList.add('active');
+    editingSlot = { hero: null, type: null, slot: null };
+    justReplaced = null;
+    activeBagHero = name;
+    renderBag(name);
+  };
+  bagHeroChipsEl.appendChild(c);
+});
+
+function isFlatStat(name) {
+  return FLAT_STATS.indexOf(name) >= 0;
+}
+
+function isDilutable(name) {
+  return DILUTABLE_STATS.indexOf(name) >= 0;
+}
+
+function buildStatPicker(container, preselected) {
+  container.innerHTML = '';
+  const preMap = {};
+  (preselected || []).forEach(s => { preMap[s.name] = s.pct; });
+
+  Object.keys(STAT_GROUPS).forEach(groupName => {
+    const groupDiv = document.createElement('div');
+    groupDiv.className = 'stat-group';
+    groupDiv.innerHTML = `<div class="stat-group-title">${groupName}</div>`;
+    const pickerDiv = document.createElement('div');
+    pickerDiv.className = 'stat-picker';
+    STAT_GROUPS[groupName].forEach(stat => {
+      const item = document.createElement('div');
+      item.className = 'stat-item';
+      item.dataset.stat = stat;
+      const isPre = preMap[stat] !== undefined;
+      if (isPre) item.classList.add('on');
+      const v = isPre ? preMap[stat] : '';
+      const unit = isFlatStat(stat) ? '' : '<span class="unit">%</span>';
+      const placeholder = isFlatStat(stat) ? '数值' : '%';
+      item.innerHTML = `<span class="stat-name">${stat}</span><input type="number" class="stat-pct" placeholder="${placeholder}" value="${v}" min="0" step="0.1">${unit}`;
+      item.querySelector('.stat-name').onclick = () => {
+        item.classList.toggle('on');
+      };
+      pickerDiv.appendChild(item);
+    });
+    groupDiv.appendChild(pickerDiv);
+    container.appendChild(groupDiv);
+  });
+}
+
+function getSelected(container) {
+  const out = [];
+  container.querySelectorAll('.stat-item.on').forEach(item => {
+    const name = item.dataset.stat;
+    const pctInput = item.querySelector('.stat-pct');
+    let pct = parseFloat(pctInput.value);
+    if (isNaN(pct) || pct <= 0) pct = 1;
+    out.push({ name, pct });
+  });
+  return out;
+}
+
+function buildBaseFields(container, itemType, part, values, prefix) {
+  const p = prefix || 'base';
+  container.innerHTML = '';
+  const v = values || {};
+  if (itemType === 'badge') {
+    container.innerHTML = `
+      <div class="field"><label style="font-size:11px">生命</label><input type="number" id="${p}Hp" value="${v.hp||0}" min="0"></div>
+      <div class="field"><label style="font-size:11px">攻击</label><input type="number" id="${p}Atk" value="${v.atk||0}" min="0"></div>
+      <div class="field"><label style="font-size:11px">技能强度</label><input type="number" id="${p}Skill" value="${v.skill||0}" min="0"></div>
+    `;
+  } else {
+    const fields = GEAR_FIXED_FIELDS[part] || [];
+    fields.forEach(f => {
+      let label = '', val = 0;
+      if (f === 'skill') { label = '技能强度'; val = v.skill || 0; }
+      if (f === 'atk')   { label = '攻击';     val = v.atk || 0; }
+      if (f === 'hp')    { label = '生命';     val = v.hp || 0; }
+      if (f === 'armor') { label = '护甲';     val = v.armor || 0; }
+      if (f === 'resist'){ label = '抗性';     val = v.resist || 0; }
+      const div = document.createElement('div');
+      div.className = 'field';
+      div.innerHTML = `<label style="font-size:11px">${label}</label><input type="number" id="${p}_${f}" value="${val}" min="0">`;
+      container.appendChild(div);
+    });
+    if (GEAR_HAS_PIERCE.indexOf(part) >= 0) {
+      const pType = v.pierceType || '护甲穿透';
+      const pVal = v.pierceValue || 0;
+      const div = document.createElement('div');
+      div.className = 'field';
+      div.innerHTML = `
+        <label style="font-size:11px">穿透（二选一）</label>
+        <div class="baseline-row">
+          <select id="${p}_pierceType">
+            <option value="护甲穿透" ${pType==='护甲穿透'?'selected':''}>护甲穿透</option>
+            <option value="抗性穿透" ${pType==='抗性穿透'?'selected':''}>抗性穿透</option>
+          </select>
+          <input type="number" id="${p}_pierceValue" value="${pVal}" min="0" placeholder="数值">
+        </div>
+      `;
+      container.appendChild(div);
+    }
+  }
+}
+
+function readBaseFields(itemType, part, prefix) {
+  const p = prefix || 'base';
+  const out = {};
+  if (itemType === 'badge') {
+    const hpEl = document.getElementById(p + 'Hp');
+    const atkEl = document.getElementById(p + 'Atk');
+    const skillEl = document.getElementById(p + 'Skill');
+    out.hp = hpEl ? (parseFloat(hpEl.value) || 0) : 0;
+    out.atk = atkEl ? (parseFloat(atkEl.value) || 0) : 0;
+    out.skill = skillEl ? (parseFloat(skillEl.value) || 0) : 0;
+  } else {
+    const fields = GEAR_FIXED_FIELDS[part] || [];
+    fields.forEach(f => {
+      const el = document.getElementById(p + '_' + f);
+      if (el) out[f] = parseFloat(el.value) || 0;
+    });
+    if (GEAR_HAS_PIERCE.indexOf(part) >= 0) {
+      const t = document.getElementById(p + '_pierceType');
+      const val = document.getElementById(p + '_pierceValue');
+      if (t && val) {
+        out.pierceType = t.value;
+        out.pierceValue = parseFloat(val.value) || 0;
+      }
+    }
+  }
+  return out;
+}
+
+function qualityName(q) {
+  if (q >= 1.6) return '黄金（红）';
+  if (q >= 1.3) return '白银（橙）';
+  return '青铜（紫）';
+}
+
+function qualityBadge(q) {
+  if (q >= 1.6) return `<span class="q-badge q-red">红</span>`;
+  if (q >= 1.3) return `<span class="q-badge q-orange">橙</span>`;
+  return `<span class="q-badge q-purple">紫</span>`;
+}
+
+function baseLine(itemType, part, base) {
+  if (!base) return '';
+  if (itemType === 'badge') {
+    return `<div class="base-line">生命 +${base.hp||0} · 攻击 +${base.atk||0} · 技能强度 +${base.skill||0}</div>`;
+  }
+  const fields = GEAR_FIXED_FIELDS[part] || [];
+  const parts = fields.map(f => {
+    let label = '';
+    if (f === 'skill') label = '技能强度';
+    if (f === 'atk') label = '攻击';
+    if (f === 'hp') label = '生命';
+    if (f === 'armor') label = '护甲';
+    if (f === 'resist') label = '抗性';
+    return `${label} +${base[f]||0}`;
+  });
+  if (base.pierceType && base.pierceValue) {
+    parts.push(`${base.pierceType} +${base.pierceValue}`);
+  }
+  return `<div class="base-line">${parts.join(' · ')}</div>`;
+}
+
+function statLabel(s) {
+  return isFlatStat(s.name) ? `${s.name} ${s.pct}` : `${s.name} ${s.pct}%`;
+}
+
+function statsLine(stats) {
+  return stats.map(s => `<span>${statLabel(s)}</span>`).join('');
+}
+
+function renderHero(name) {
+  const h = HEROES[name];
+  const w = h.baseWeight;
+  const scenarioTag = currentScenario !== '通用' ? `<span class="role-tag" style="background:#2a4a6a;color:#9ac8e8">场景：${currentScenario}</span>` : '';
+  const html = `<div class="card">
+    <h2>${name}
+      <span class="role-tag">${h.role}</span>
+      <span class="role-tag dmg">${h.damageType}伤害</span>
+      <span class="role-tag out">${h.outputType}输出</span>
+      ${scenarioTag}
+    </h2>
+    <div class="row">
+      <div class="label">徽章优先级（前 3 为核心，其后为过渡/备选）</div>
+      <div class="vals">${h.badge.map((v,i) => {
+        const cls = i===0?'first':i===1?'second':(i<=2?'':(i>=3?'last':''));
+        return `<span class="val ${cls}">${i+1}. ${v}</span>`;
+      }).join('')}</div>
+    </div>
+    <div class="row">
+      <div class="label">装备 / 词条优先级</div>
+      <div class="vals">${h.gear.map((v,i) => {
+        const cls = i===0?'first':i===1?'second':(i<=2?'':(i>=3?'last':''));
+        return `<span class="val ${cls}">${i+1}. ${v}</span>`;
+      }).join('')}</div>
+    </div>
+    <div class="row">
+      <div class="label">适配部位</div>
+      <div class="vals">${h.parts.map(p => `<span class="val">${p}</span>`).join('')}</div>
+    </div>
+    <div class="row">
+      <div class="label">基础属性权重</div>
+      <div class="vals">
+        <span class="val">生命 ×${w.hp}</span>
+        <span class="val">攻击 ×${w.atk}</span>
+        <span class="val">技能强度 ×${w.skill}</span>
+      </div>
+    </div>
+    <div class="tip">${h.tip}</div>
+  </div>`;
+  heroResultEl.innerHTML = html;
+}
+
+function statTier(heroName, statName) {
+  const h = HEROES[heroName];
+  const badgeIdx = h.badge.indexOf(statName);
+  const gearIdx = h.gear.indexOf(statName);
+  const best = Math.min(
+    badgeIdx >= 0 ? badgeIdx : 99,
+    gearIdx >= 0 ? gearIdx : 99
+  );
+  if (best === 0) return { cls: 't0', label: 'T0 核心', desc: '该英雄第 1 优先级' };
+  if (best === 1) return { cls: 't1', label: 'T1 次核心', desc: '该英雄第 2 优先级' };
+  if (best === 2) return { cls: 't2', label: 'T2 可用', desc: '该英雄第 3 优先级' };
+  if (best >= 3 && best < 99) return { cls: 't3', label: 'T3 过渡', desc: '在推荐列表里，但排名靠后' };
+  return { cls: 'tn', label: '不推荐', desc: '不在该英雄推荐列表里' };
+}
+
+function renderStat(stat) {
+  const s = STATS[stat];
+  let html = `<div class="card">
+    <h2>「${stat}」给谁最合适</h2>`;
+
+  if (STAT_DEFS[stat]) {
+    html += `<div class="stat-def-box"><b>官方说明：</b>${STAT_DEFS[stat]}</div>`;
+  }
+  if (isDilutable(stat)) {
+    html += `<div class="tip warn">ℹ️ 这是通用增伤词条，对物理和能量伤害都生效，收益稳定但容易被其他增伤渠道稀释。不是虚战，但优先级低于攻击和穿透。</div>`;
+  }
+  if (STAT_THRESHOLDS[stat]) {
+    const t = STAT_THRESHOLDS[stat];
+    html += `<div class="tip info">📊 阈值：${t.note}。装备+徽章累计达到 ${t.cap}% 就是上限，达到 ${t.warn}% 左右就要注意边际收益。</div>`;
+  }
+
+  html += `<div class="rank">首选英雄 + 收益档位</div>`;
+  s.top.forEach(n => {
+    if (!HEROES[n]) return;
+    const t = statTier(n, stat);
+    const h = HEROES[n];
+    html += `<div class="hero-line top">
+      <span class="name">${n}</span>
+      <span class="tier ${t.cls}">${t.label}</span>
+      <span class="reason">${t.desc} · ${h.damageType}${h.outputType}</span>
+    </div>`;
+  });
+
+  if (s.second.length) {
+    html += `<div class="rank">次选英雄 + 收益档位</div>`;
+    s.second.forEach(n => {
+      if (!HEROES[n]) return;
+      const t = statTier(n, stat);
+      const h = HEROES[n];
+      html += `<div class="hero-line">
+        <span class="name">${n}</span>
+        <span class="tier ${t.cls}">${t.label}</span>
+        <span class="reason">${t.desc} · ${h.damageType}${h.outputType}</span>
+      </div>`;
+    });
+  }
+
+  const notRecommended = Object.keys(HEROES).filter(n => {
+    const h = HEROES[n];
+    if (h.badge.indexOf(stat) >= 0 || h.gear.indexOf(stat) >= 0) return false;
+    if (stat === '护甲穿透' && h.damageType === '能量') return true;
+    if (stat === '抗性穿透' && h.damageType === '物理') return true;
+    if (stat === '攻击' && h.outputType === '技能') return true;
+    if (stat === '技能强度' && h.outputType === '普攻') return true;
+    if (stat === '攻击速度' && h.outputType === '技能') return true;
+    return false;
+  });
+  if (notRecommended.length > 0) {
+    html += `<div class="rank">这些英雄吃不到 / 收益极低</div>
+      <div class="tip warn">${notRecommended.join('、')}：${stat} 对他们收益很低，优先别占核心槽。</div>`;
+  }
+
+  html += `<div class="tip info">${s.reason}</div></div>`;
+  statResultEl.innerHTML = html;
+}
+
+/* ============ 配置和对比页 ============ */
+
+function renderBag(name) {
+  const data = getHeroData(name);
+  const h = HEROES[name];
+  const badgeCount = Object.keys(data.badges).length;
+  const gearCount = Object.keys(data.gears).length;
+
+  const scenarioTag = currentScenario !== '通用' ? `<span class="role-tag" style="background:#2a4a6a;color:#9ac8e8">场景：${currentScenario}</span>` : '';
+
+  let html = `<div class="card"><h2>${name}
+    <span class="role-tag">${h.role}</span>
+    <span class="role-tag dmg">${h.damageType}</span>
+    <span class="role-tag out">${h.outputType}</span>
+    ${scenarioTag}
+  </h2>`;
+
+  html += `<div class="label">当前徽章（${badgeCount}/${MAX_BADGES}）</div>`;
+  for (let i = 1; i <= MAX_BADGES; i++) {
+    const slotKey = String(i);
+    const b = data.badges[slotKey];
+    const isEditing = editingSlot.hero === name && editingSlot.type === 'badge' && editingSlot.slot === slotKey;
+    const isReplaced = justReplaced && justReplaced.hero === name && justReplaced.type === 'badge' && justReplaced.slot === slotKey;
+    if (b) {
+      const sc = scoreItem(name, b.stats, b.quality, null, 'badge', b.base);
+      html += `<div class="slot ${isEditing ? 'editing' : ''} ${isReplaced ? 'just-replaced' : ''}" id="slot-badge-${i}">
+        <div class="head">
+          <span class="tag">槽 ${i} · ${qualityBadge(b.quality)}${qualityName(b.quality)} · ${sc.toFixed(2)} 分</span>
+          <div class="slot-actions">
+            <button class="btn ghost small" onclick="editBadge('${name}','${slotKey}')">${isEditing ? '关闭' : '改'}</button>
+            <button class="btn danger small" onclick="clearSlot('${name}','badges','${slotKey}')">删</button>
+          </div>
+        </div>
+        ${baseLine('badge', null, b.base)}
+        <div class="stats">${statsLine(b.stats)}</div>
+        ${isEditing ? inlineBadgeEditor(name, slotKey, b) : ''}
+      </div>`;
+    } else {
+      html += `<div class="slot" id="slot-badge-${i}"><div class="empty-tip">槽 ${i} 未录入</div></div>`;
+    }
+  }
+
+  html += `<div class="label" style="margin-top:12px">当前装备（${gearCount}/${MAX_GEARS}）</div>`;
+  for (let i = 1; i <= MAX_GEARS; i++) {
+    const slotKey = String(i);
+    const g = data.gears[slotKey];
+    const isEditing = editingSlot.hero === name && editingSlot.type === 'gear' && editingSlot.slot === slotKey;
+    const isReplaced = justReplaced && justReplaced.hero === name && justReplaced.type === 'gear' && justReplaced.slot === slotKey;
+    if (g) {
+      const sc = scoreItem(name, g.stats, g.quality, g.part, 'gear', g.base);
+      html += `<div class="slot ${isEditing ? 'editing' : ''} ${isReplaced ? 'just-replaced' : ''}" id="slot-gear-${i}">
+        <div class="head">
+          <span class="tag">槽 ${i} · ${g.part} · ${qualityBadge(g.quality)}${qualityName(g.quality)} · ${sc.toFixed(2)} 分</span>
+          <div class="slot-actions">
+            <button class="btn ghost small" onclick="editGear('${name}','${slotKey}')">${isEditing ? '关闭' : '改'}</button>
+            <button class="btn danger small" onclick="clearSlot('${name}','gears','${slotKey}')">删</button>
+          </div>
+        </div>
+        ${baseLine('gear', g.part, g.base)}
+        <div class="stats">${statsLine(g.stats)}</div>
+        ${isEditing ? inlineGearEditor(name, slotKey, g) : ''}
+      </div>`;
+    } else {
+      html += `<div class="slot" id="slot-gear-${i}"><div class="empty-tip">槽 ${i} 未录入</div></div>`;
+    }
+  }
+
+  html += renderResourcePlan(name);
+
+  html += renderCandidatePool(name);
+
+  html += `<div class="form-block" style="margin-top:12px">
+    <h3>整体短板</h3>
+    <div id="overviewBox"></div>
+  </div>`;
+
+  html += `<div class="form-block" style="margin-top:12px">
+    <h3>换哪件最划算</h3>
+    <div id="replaceBox"></div>
+  </div>`;
+
+  html += `<div class="form-block" style="margin-top:10px">
+    <h3>添加徽章（自动填入第一个空槽）</h3>
+    <div class="field"><label>品质</label>
+      <select id="addBadgeQ">
+        <option value="1">青铜（紫）</option>
+        <option value="1.3">白银（橙）</option>
+        <option value="1.6">黄金（红）</option>
+      </select></div>
+    <div class="field"><label>基础属性数值</label>
+      <div class="baseline-row" id="addBadgeBaseRow"></div>
+    </div>
+    <div class="field"><label>词条（护甲/穿透类填数值，其余填百分比）</label>
+      <div id="addBadgeStats"></div></div>
+    <button class="btn" onclick="saveBadge('${name}')">添加为下一个徽章</button>
+  </div>`;
+
+  html += `<div class="form-block" style="margin-top:10px">
+    <h3>添加装备（自动填入第一个空槽）</h3>
+    <div class="field"><label>部位</label>
+      <select id="addGearPart">
+        <option value="防具">防具</option>
+        <option value="兵刃">兵刃</option>
+        <option value="枪械">枪械</option>
+      </select></div>
+    <div class="field"><label>品质</label>
+      <select id="addGearQ">
+        <option value="1">青铜（紫）</option>
+        <option value="1.3">白银（橙）</option>
+        <option value="1.6">黄金（红）</option>
+      </select></div>
+    <div class="field"><label>基础属性数值</label>
+      <div class="baseline-row" id="addGearBaseRow"></div>
+    </div>
+    <div class="field"><label>词条（护甲/穿透类填数值，其余填百分比）</label>
+      <div id="addGearStats"></div></div>
+    <button class="btn" onclick="saveGear('${name}')">添加为下一个装备</button>
+  </div>`;
+
+  html += `</div>`;
+  bagResultEl.innerHTML = html;
+
+  buildStatPicker(document.getElementById('addBadgeStats'), null);
+  buildStatPicker(document.getElementById('addGearStats'), null);
+
+  buildBaseFields(document.getElementById('addBadgeBaseRow'), 'badge', null, {}, 'addBadgeBase');
+  buildBaseFields(document.getElementById('addGearBaseRow'), 'gear', '防具', {}, 'addGearBase');
+
+  document.getElementById('addGearPart').onchange = function() {
+    buildBaseFields(document.getElementById('addGearBaseRow'), 'gear', this.value, {}, 'addGearBase');
+  };
+
+  renderOverview(name);
+  renderReplaceAdvice(name);
+  renderCandidatePoolInteractive(name);
+
+  if (editingSlot.hero === name && editingSlot.type === 'badge') {
+    const b = data.badges[editingSlot.slot];
+    if (b) buildStatPicker(document.getElementById('inlineBadgeStats'), b.stats);
+  }
+  if (editingSlot.hero === name && editingSlot.type === 'gear') {
+    const g = data.gears[editingSlot.slot];
+    if (g) buildStatPicker(document.getElementById('inlineGearStats'), g.stats);
+  }
+}
+
+/* ============ 资源规划 ============ */
+
+function renderResourcePlan(name) {
+  const data = getHeroData(name);
+  const h = HEROES[name];
+
+  /* 收集所有候选的"如果换到推荐槽位"的提升幅度 */
+  const heroCandidates = CANDIDATES.filter(c => c.hero === name);
+  if (heroCandidates.length === 0) {
+    return `<div class="form-block" style="margin-top:12px">
+      <h3>资源规划</h3>
+      <div class="tip info">候选池是空的。先去下面「新物品候选池」录入候选，这里会自动帮你排出"先换哪件、后换哪件"。</div>
+    </div>`;
+  }
+
+  const planItems = [];
+
+  heroCandidates.forEach(cand => {
+    const isGear = cand.type === 'gear';
+    const slots = isGear ? data.gears : data.badges;
+    const max = isGear ? MAX_GEARS : MAX_BADGES;
+
+    let bestSlot = null;
+    let bestGap = -Infinity;
+    for (let i = 1; i <= max; i++) {
+      const key = String(i);
+      if (!slots[key]) continue;
+      if (isGear && slots[key].part !== cand.part) continue;
+      const oldItem = slots[key];
+      const newScore = scoreItem(name, cand.stats, cand.quality, isGear ? cand.part : null, isGear ? 'gear' : 'badge', cand.base);
+      const oldScore = scoreItem(name, oldItem.stats, oldItem.quality, oldItem.part, isGear ? 'gear' : 'badge', oldItem.base);
+      const gap = newScore - oldScore;
+      if (gap > bestGap) {
+        bestGap = gap;
+        bestSlot = key;
+      }
+    }
+
+    if (bestSlot) {
+      planItems.push({
+        cand: cand,
+        slot: bestSlot,
+        gain: bestGap,
+        isGear: isGear
+      });
+    }
+  });
+
+  if (planItems.length === 0) {
+    return `<div class="form-block" style="margin-top:12px">
+      <h3>资源规划</h3>
+      <div class="tip warn">候选池里的物品都没有可对比的同部位槽位，无法计算提升幅度。</div>
+    </div>`;
+  }
+
+  /* 按提升幅度排序 */
+  planItems.sort((a, b) => b.gain - a.gain);
+
+  let html = `<div class="form-block" style="margin-top:12px">
+    <h3>资源规划（资源有限时先升哪个）</h3>
+    <div class="tip info">按"如果换上，相对当前槽位的提升幅度"从大到小排序。</div>`;
+
+  planItems.forEach((item, idx) => {
+    const cand = item.cand;
+    const isGear = item.isGear;
+    const title = isGear
+      ? `${cand.part} · ${cand.stats.map(statLabel).join(' + ')}`
+      : `徽章 · ${cand.stats.map(statLabel).join(' + ')}`;
+
+    let tagHtml = '';
+    let rowCls = '';
+    if (idx === 0 && item.gain > 0) {
+      tagHtml = `<span class="r-tag" style="background:#2f6a45;color:#a8e8c0">优先升</span>`;
+      rowCls = 'top1';
+    } else if (item.gain > 0.5) {
+      tagHtml = `<span class="r-tag" style="background:#2a4a6a;color:#9ac8e8">值得升</span>`;
+    } else if (item.gain > 0) {
+      tagHtml = `<span class="r-tag" style="background:#24313d;color:#9ab">可升可不升</span>`;
+      rowCls = 'dim';
+    } else {
+      tagHtml = `<span class="r-tag" style="background:#2a1a1a;color:#f0a8a8">先别升</span>`;
+      rowCls = 'dim';
+    }
+
+    html += `<div class="resource-row ${rowCls}">
+      <span class="r-rank">${idx + 1}</span>
+      <span class="r-name">${title}</span>
+      <span class="r-gain" style="color:${item.gain > 0 ? '#7ee2a8' : '#e87a7a'}">
+        ${item.gain >= 0 ? '+' : ''}${item.gain.toFixed(2)} 分
+      </span>
+      ${tagHtml}
+    </div>
+    <div style="font-size:12px;color:#7a8a9a;margin:-4px 0 10px 34px">
+      → 换到 ${isGear ? '装备' : '徽章'} 槽 ${item.slot}（${isGear ? cand.part : ''}）
+    </div>`;
+  });
+
+  /* 总结 */
+  const top1 = planItems[0];
+  if (top1.gain > 0) {
+    let summary = `建议优先升 <b>${top1.isGear ? top1.cand.part : '徽章'} · ${top1.cand.stats.map(statLabel).join(' + ')}</b>，换到槽 ${top1.slot}，提升 ${top1.gain.toFixed(2)} 分。`;
+    if (planItems.length > 1 && planItems[1].gain > 0) {
+      summary += ` 其次是「${planItems[1].isGear ? planItems[1].cand.part : '徽章'} · ${planItems[1].cand.stats.map(statLabel).join(' + ')}」（+${planItems[1].gain.toFixed(2)} 分）。`;
+    }
+    if (planItems.some(p => p.gain <= 0)) {
+      summary += ` 提升幅度为负或接近零的候选，先放着，别浪费资源。`;
+    }
+    html += `<div class="tip suggest" style="margin-top:12px">${summary}</div>`;
+  } else {
+    html += `<div class="tip warn" style="margin-top:12px">当前候选池里没有一件比现有配置更好的。建议继续攒资源，等更好的再换。</div>`;
+  }
+
+  html += `</div>`;
+  return html;
+}
+
+/* ============ 候选池 ============ */
+
+function renderCandidatePool(name) {
+  let html = `<div class="form-block" style="margin-top:12px">
+    <h3>新物品候选池</h3>
+    <div class="field">
+      <button class="btn ghost small" onclick="openCandidatePanel('${name}')">+ 录入新物品</button>
+      <span style="font-size:12px;color:#7a8a9a;margin-left:8px">先选类型，再录数据</span>
+    </div>
+    <div id="candidatePanelWrap"></div>
+    <div id="candidateListWrap"></div>
+  </div>`;
+  return html;
+}
+
+function renderCandidatePoolInteractive(name) {
+  const wrap = document.getElementById('candidatePanelWrap');
+  const listWrap = document.getElementById('candidateListWrap');
+  if (!wrap || !listWrap) return;
+
+  if (candidatePanel.open) {
+    const isGear = candidatePanel.type === 'gear';
+    wrap.innerHTML = `<div class="inline-edit">
+      <div class="editing-hint">录入新物品</div>
+      <div class="field">
+        <label>类型</label>
+        <select id="candType" onchange="onCandidateTypeChange('${name}')">
+          <option value="badge" ${candidatePanel.type==='badge'?'selected':''}>徽章</option>
+          <option value="gear" ${candidatePanel.type==='gear'?'selected':''}>装备</option>
+        </select>
+      </div>
+      ${isGear ? `<div class="field">
+        <label>部位</label>
+        <select id="candPart" onchange="onCandidatePartChange('${name}')">
+          <option value="防具" ${candidatePanel.part==='防具'?'selected':''}>防具</option>
+          <option value="兵刃" ${candidatePanel.part==='兵刃'?'selected':''}>兵刃</option>
+          <option value="枪械" ${candidatePanel.part==='枪械'?'selected':''}>枪械</option>
+        </select>
+      </div>` : ''}
+      <div class="field">
+        <label>品质</label>
+        <select id="candQ">
+          <option value="1">青铜（紫）</option>
+          <option value="1.3">白银（橙）</option>
+          <option value="1.6">黄金（红）</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>基础属性数值</label>
+        <div class="baseline-row" id="candBaseRow"></div>
+      </div>
+      <div class="field">
+        <label>词条（护甲/穿透类填数值，其余填百分比）</label>
+        <div id="candStats"></div>
+      </div>
+      <div class="actions">
+        <button class="btn small" onclick="saveCandidate('${name}')">录入候选</button>
+        <button class="btn cancel small" onclick="closeCandidatePanel('${name}')">取消</button>
+      </div>
+    </div>`;
+    buildBaseFields(document.getElementById('candBaseRow'), candidatePanel.type, candidatePanel.type === 'gear' ? candidatePanel.part : null, {}, 'candBase');
+    buildStatPicker(document.getElementById('candStats'), null);
+  } else {
+    wrap.innerHTML = '';
+  }
+
+  const heroCandidates = CANDIDATES.filter(c => c.hero === name);
+  if (heroCandidates.length === 0) {
+    listWrap.innerHTML = `<div class="tip info">候选池是空的。点「+ 录入新物品」，选类型、填数据，然后就能和已有槽位对比。</div>`;
+    return;
+  }
+
+  const data = getHeroData(name);
+
+  let html = `<div class="label" style="margin-top:10px">已录入候选（${heroCandidates.length}）</div>`;
+
+  heroCandidates.forEach(cand => {
+    const isGear = cand.type === 'gear';
+    const sc = scoreItem(name, cand.stats, cand.quality, isGear ? cand.part : null, isGear ? 'gear' : 'badge', cand.base);
+
+    const slots = isGear ? data.gears : data.badges;
+    const max = isGear ? MAX_GEARS : MAX_BADGES;
+    const slotList = [];
+    for (let i = 1; i <= max; i++) {
+      const key = String(i);
+      if (!slots[key]) continue;
+      if (isGear && slots[key].part !== cand.part) continue;
+      slotList.push(key);
+    }
+
+    let recommended = null;
+    let bestGap = -Infinity;
+    slotList.forEach(k => {
+      const oldItem = slots[k];
+      const oldScore = scoreItem(name, oldItem.stats, oldItem.quality, oldItem.part, isGear ? 'gear' : 'badge', oldItem.base);
+      const gap = sc - oldScore;
+      if (gap > bestGap) {
+        bestGap = gap;
+        recommended = k;
+      }
+    });
+
+    const selectedSlot = candidateTargets[cand.id];
+
+    html += `<div class="candidate ${selectedSlot ? 'active' : ''}">
+      <div class="c-head">
+        <span class="c-title">候选 · ${isGear ? cand.part + ' · ' : ''}${qualityBadge(cand.quality)}${qualityName(cand.quality)} · ${cand.stats.map(statLabel).join(' + ')}</span>
+        <span class="c-score">${sc.toFixed(2)} 分</span>
+      </div>
+      <div class="c-body">
+        ${baseLine(isGear ? 'gear' : 'badge', isGear ? cand.part : null, cand.base)}
+      </div>`;
+
+    if (recommended) {
+      const oldItem = slots[recommended];
+      const oldScore = scoreItem(name, oldItem.stats, oldItem.quality, oldItem.part, isGear ? 'gear' : 'badge', oldItem.base);
+      const gap = sc - oldScore;
+      html += `<div class="c-rec">
+        → 系统推荐：优先和 <b>槽 ${recommended}</b> 比（${isGear ? '同部位 ' + cand.part + '，' : ''}分差 ${gap >= 0 ? '+' : ''}${gap.toFixed(2)}）
+      </div>`;
+    } else {
+      html += `<div class="c-rec" style="border-left-color:#e2d47e">
+        → 没有可对比的槽位${isGear ? '（该英雄还没有同部位 ' + cand.part + ' 的装备）' : '（该英雄还没有录入徽章）'}，可以直接当新槽用。
+      </div>`;
+    }
+
+    if (slotList.length > 0) {
+      html += `<div style="font-size:12px;color:#7a8a9a;margin-top:6px">或者手动选：</div>
+        <div class="c-slot-row">`;
+      slotList.forEach(k => {
+        const isRec = k === recommended;
+        const isSel = k === selectedSlot;
+        const oldItem = slots[k];
+        const oldScore = scoreItem(name, oldItem.stats, oldItem.quality, oldItem.part, isGear ? 'gear' : 'badge', oldItem.base);
+        const gap = sc - oldScore;
+        const cls = (isRec ? 'rec ' : '') + (isSel ? 'selected ' : '');
+        html += `<div class="c-slot-btn ${cls}" onclick="selectCandidateTarget('${name}','${cand.id}','${k}')">
+          槽 ${k}（${gap >= 0 ? '+' : ''}${gap.toFixed(2)}）
+        </div>`;
+      });
+      html += `</div>`;
+    }
+
+    if (selectedSlot && slots[selectedSlot]) {
+      const oldItem = slots[selectedSlot];
+      html += buildCandidateCompare(name, cand, oldItem, selectedSlot);
+    }
+
+    html += `<div style="margin-top:8px">
+      <button class="btn danger small" onclick="removeCandidate('${name}','${cand.id}')">删除候选</button>
+    </div>`;
+
+    html += `</div>`;
+  });
+
+  listWrap.innerHTML = html;
+}
+
+function buildCandidateCompare(name, cand, oldItem, oldSlot) {
+  const isGear = cand.type === 'gear';
+  const itemType = isGear ? 'gear' : 'badge';
+  const newPart = isGear ? cand.part : null;
+
+  const newScore = scoreItem(name, cand.stats, cand.quality, newPart, itemType, cand.base);
+  const oldScore = scoreItem(name, oldItem.stats, oldItem.quality, oldItem.part, itemType, oldItem.base);
+  const gain = newScore - oldScore;
+
+  const analysis = buildFlexibleAnalysis(name, itemType, cand.stats, cand.quality, newPart, cand.base, oldItem, oldSlot);
+
+  let html = `<div class="analysis" style="margin-top:12px">
+    <h4>📋 对比：候选 vs 槽 ${oldSlot}</h4>
+
+    <div class="rank">候选</div>
+    <div class="result-line best">
+      <span class="rname">${isGear ? cand.part + ' · ' : ''}${qualityBadge(cand.quality)}${qualityName(cand.quality)} · ${cand.stats.map(statLabel).join(' + ')}</span>
+      <span class="rscore">${newScore.toFixed(2)} 分</span>
+    </div>
+    ${baseLine(itemType, newPart, cand.base)}
+
+    <div class="rank">当前槽 ${oldSlot}</div>
+    <div class="result-line">
+      <span class="rname">${isGear ? oldItem.part + ' · ' : ''}${qualityBadge(oldItem.quality)}${qualityName(oldItem.quality)} · ${oldItem.stats.map(statLabel).join(' + ')}</span>
+      <span class="rscore" style="color:#9ab">${oldScore.toFixed(2)} 分</span>
+    </div>
+    ${baseLine(itemType, oldItem.part, oldItem.base)}
+
+    <div class="rank">分差</div>
+    <div class="result-line ${gain > 0 ? 'best' : (gain < 0 ? 'tie' : '')}">
+      <span class="rname">候选 - 槽 ${oldSlot}</span>
+      <span style="color:${gain > 0 ? '#7ee2a8' : (gain < 0 ? '#e87a7a' : '#9ab')};font-weight:600">${gain >= 0 ? '+' : ''}${gain.toFixed(2)} 分</span>
+    </div>
+    `;
+
+  analysis.lines.forEach(l => {
+    html += `<div class="line ${l.cls}">${l.text}</div>`;
+  });
+  html += `<div class="conclusion ${analysis.verdictClass}">${analysis.verdict}</div>`;
+
+  html += `<div class="slot-swap-row" style="margin-top:12px">
+    <button class="btn swap small" onclick="applyCandidate('${name}','${cand.id}','${oldSlot}')">换到槽 ${oldSlot}</button>
+    <button class="btn cancel small" onclick="clearCandidateTarget('${name}','${cand.id}')">取消对比</button>
+  </div>`;
+
+  html += `</div>`;
+  return html;
+}
+
+function openCandidatePanel(hero) {
+  candidatePanel.open = true;
+  candidatePanel.type = 'badge';
+  candidatePanel.part = '防具';
+  renderBag(hero);
+}
+
+function closeCandidatePanel(hero) {
+  candidatePanel.open = false;
+  renderBag(hero);
+}
+
+function onCandidateTypeChange(hero) {
+  candidatePanel.type = document.getElementById('candType').value;
+  renderBag(hero);
+}
+
+function onCandidatePartChange(hero) {
+  candidatePanel.part = document.getElementById('candPart').value;
+  renderBag(hero);
+}
+
+function saveCandidate(hero) {
+  const type = candidatePanel.type;
+  const isGear = type === 'gear';
+  const part = isGear ? candidatePanel.part : null;
+  const q = parseFloat(document.getElementById('candQ').value);
+  const base = readBaseFields(isGear ? 'gear' : 'badge', part, 'candBase');
+  const stats = getSelected(document.getElementById('candStats'));
+
+  if (stats.length === 0) { alert('请至少选一个词条'); return; }
+
+  const cand = {
+    id: 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+    hero: hero,
+    type: type,
+    part: part,
+    quality: q,
+    base: base,
+    stats: stats
+  };
+  CANDIDATES.push(cand);
+  saveCandidates(CANDIDATES);
+  candidatePanel.open = false;
+  renderBag(hero);
+}
+
+function removeCandidate(hero, id) {
+  if (!confirm('删除这个候选？')) return;
+  CANDIDATES = CANDIDATES.filter(c => c.id !== id);
+  delete candidateTargets[id];
+  saveCandidates(CANDIDATES);
+  renderBag(hero);
+}
+
+function selectCandidateTarget(hero, id, slotKey) {
+  if (candidateTargets[id] === slotKey) {
+    delete candidateTargets[id];
+  } else {
+    candidateTargets[id] = slotKey;
+  }
+  renderBag(hero);
+  setTimeout(() => {
+    const cands = document.querySelectorAll('.candidate');
+    cands.forEach(c => {
+      if (c.innerHTML.indexOf('对比：候选') >= 0) {
+        c.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    });
+  }, 100);
+}
+
+function clearCandidateTarget(hero, id) {
+  delete candidateTargets[id];
+  renderBag(hero);
+}
+
+function applyCandidate(hero, id, slotKey) {
+  const cand = CANDIDATES.find(c => c.id === id);
+  if (!cand) { alert('候选不存在'); return; }
+
+  const isGear = cand.type === 'gear';
+  const data = getHeroData(hero);
+
+  if (isGear) {
+    data.gears[slotKey] = {
+      part: cand.part,
+      quality: cand.quality,
+      stats: cand.stats,
+      base: cand.base
+    };
+  } else {
+    data.badges[slotKey] = {
+      quality: cand.quality,
+      stats: cand.stats,
+      base: cand.base
+    };
+  }
+  saveConfig(CONFIG);
+
+  CANDIDATES = CANDIDATES.filter(c => c.id !== id);
+  delete candidateTargets[id];
+  saveCandidates(CANDIDATES);
+
+  justReplaced = { hero: hero, type: isGear ? 'gear' : 'badge', slot: slotKey };
+  renderBag(hero);
+
+  setTimeout(() => {
+    const slotId = 'slot-' + (isGear ? 'gear' : 'badge') + '-' + slotKey;
+    const el = document.getElementById(slotId);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, 100);
+}
+
+/* ============ 整体短板 & 阈值溢出 ============ */
+
+function collectOwnedStats(name) {
+  const data = getHeroData(name);
+  const owned = { badge: new Set(), gear: new Set() };
+  Object.values(data.badges).forEach(b => b.stats.forEach(s => owned.badge.add(s.name)));
+  Object.values(data.gears).forEach(g => g.stats.forEach(s => owned.gear.add(s.name)));
+  return owned;
+}
+
+function calcStatTotals(name) {
+  const data = getHeroData(name);
+  const totals = {};
+  Object.values(data.badges).forEach(b => {
+    b.stats.forEach(s => {
+      const n = ALIAS_MAP[s.name] || s.name;
+      totals[n] = (totals[n] || 0) + (s.pct || 0);
+    });
+  });
+  Object.values(data.gears).forEach(g => {
+    g.stats.forEach(s => {
+      const n = ALIAS_MAP[s.name] || s.name;
+      totals[n] = (totals[n] || 0) + (s.pct || 0);
+    });
+  });
+  return totals;
+}
+
+function calcThresholdChecks(name) {
+  const totals = calcStatTotals(name);
+  const out = [];
+  Object.keys(STAT_THRESHOLDS).forEach(statName => {
+    const t = STAT_THRESHOLDS[statName];
+    const v = totals[statName] || 0;
+    if (v <= 0) return;
+    let cls, note;
+    if (v >= t.cap) {
+      cls = 'warn';
+      note = `装备+徽章累计 ${v.toFixed(2)}%，已达/超过 ${t.cap}% 阈值。${t.note}。再堆该词条收益会大幅下降。`;
+    } else if (v >= t.warn) {
+      cls = 'info';
+      note = `装备+徽章累计 ${v.toFixed(2)}%，接近 ${t.cap}% 阈值。${t.note}。再多堆就要留意收益。`;
+    } else {
+      cls = 'good';
+      note = `装备+徽章累计 ${v.toFixed(2)}%，离 ${t.cap}% 阈值还有空间。`;
+    }
+    out.push({ stat: statName, cls, note });
+  });
+  return out;
+}
+
+function renderOverview(name) {
+  const box = document.getElementById('overviewBox');
+  if (!box) return;
+  const h = HEROES[name];
+  const data = getHeroData(name);
+  const owned = collectOwnedStats(name);
+
+  const badgeCount = Object.keys(data.badges).length;
+  const gearCount = Object.keys(data.gears).length;
+
+  const allOwned = new Set([...owned.badge, ...owned.gear]);
+
+  const coreBadge = h.badge.slice(0, 3);
+  const coreGear = h.gear.slice(0, 3);
+  const coreAll = [...new Set([...coreBadge, ...coreGear])];
+
+  const coreMissing = coreAll.filter(s => !allOwned.has(s));
+  const dilutableOwned = [...allOwned].filter(s => isDilutable(s));
+
+  const attackStats = ['攻击', '技能强度', '攻击速度', '暴击', '暴击伤害', '护甲穿透', '抗性穿透', '命中'];
+  const surviveStats = ['生命', '伤害减免', '护甲', '抗性', '暴击抵抗', '闪避', '生命恢复', '控制抗性'];
+  const funcStats = ['冷却缩减', '初始能量', '生命回收'];
+
+  const attackCount = [...allOwned].filter(s => attackStats.includes(s)).length;
+  const surviveCount = [...allOwned].filter(s => surviveStats.includes(s)).length;
+  const funcCount = [...allOwned].filter(s => funcStats.includes(s)).length;
+
+  let lines = [];
+
+  lines.push({
+    cls: badgeCount >= MAX_BADGES && gearCount >= MAX_GEARS ? 'good' : 'warn',
+    text: `槽位：徽章 ${badgeCount}/${MAX_BADGES}，装备 ${gearCount}/${MAX_GEARS}。${badgeCount >= MAX_BADGES && gearCount >= MAX_GEARS ? '已满，进入词条精修阶段。' : '还没满，优先补空槽。'}`
+  });
+
+  if (coreMissing.length === 0) {
+    lines.push({ cls: 'good', text: `核心词条：前 3 优先级已覆盖（${coreAll.join('、')}）。` });
+  } else {
+    lines.push({ cls: 'warn', text: `核心词条缺口：还缺 ${coreMissing.join('、')}。这是${name}最吃收益的方向，优先补。` });
+  }
+
+  lines.push({
+    cls: 'info',
+    text: `词条结构：输出类 ${attackCount} 条，生存类 ${surviveCount} 条，功能类 ${funcCount} 条。`
+  });
+
+  if (h.role === '坦克') {
+    if (surviveCount < 3) {
+      lines.push({ cls: 'bad', text: `作为坦克，生存类词条只有 ${surviveCount} 条，偏少。建议至少 3 条以上生存词条。` });
+    } else {
+      lines.push({ cls: 'good', text: `作为坦克，生存类词条 ${surviveCount} 条，结构合理。` });
+    }
+  } else if (h.role === '战士' || h.role === '射手' || h.role === '法师') {
+    if (attackCount < 2) {
+      lines.push({ cls: 'bad', text: `作为${h.role}，输出/功能类词条只有 ${attackCount} 条，偏少。建议至少 2 条以上输出向词条。` });
+    } else {
+      lines.push({ cls: 'good', text: `作为${h.role}，输出/功能类词条 ${attackCount} 条，结构合理。` });
+    }
+  }
+
+  if (dilutableOwned.length > 0) {
+    lines.push({ cls: 'info', text: `通用增伤：当前带了 ${dilutableOwned.join('、')}。收益稳定但容易被其他增伤渠道稀释，不用刻意堆，但也不亏。` });
+  }
+
+  const hasArmorPierce = allOwned.has('护甲穿透');
+  const hasResistPierce = allOwned.has('抗性穿透');
+  if (h.role === '战士' || h.role === '射手' || h.role === '法师') {
+    if (h.damageType === '物理') {
+      if (!hasArmorPierce) {
+        lines.push({ cls: 'warn', text: `穿透：${name}是物理伤害，当前没有护甲穿透。打高护甲前排时可能打不动，建议至少补一条护甲穿透。` });
+      } else {
+        lines.push({ cls: 'good', text: `穿透：物理伤害，已有护甲穿透。` });
+      }
+    } else if (h.damageType === '能量') {
+      if (!hasResistPierce) {
+        lines.push({ cls: 'warn', text: `穿透：${name}是能量伤害，当前没有抗性穿透。打高抗性前排时可能打不动，建议至少补一条抗性穿透。` });
+      } else {
+        lines.push({ cls: 'good', text: `穿透：能量伤害，已有抗性穿透。` });
+      }
+    }
+  }
+
+  let html = `<div class="overview-grid">`;
+  lines.forEach(l => {
+    html += `<div class="conflict-line ${l.cls}">${l.text}</div>`;
+  });
+  html += `</div>`;
+
+  const checks = calcThresholdChecks(name);
+  if (checks.length > 0) {
+    html += `<div class="label" style="margin-top:14px">阈值与溢出（仅统计装备+徽章贡献，不含英雄基础和其他来源）</div>`;
+    checks.forEach(c => {
+      html += `<div class="conflict-line ${c.cls}"><b>${c.stat}</b>：${c.note}</div>`;
+    });
+  } else {
+    html += `<div class="tip info" style="margin-top:12px">当前配置里没有触发阈值的词条（暴击/命中/闪避/暴击抵抗/伤害减免）。</div>`;
+  }
+
+  box.innerHTML = html;
+}
+
+function analyzeSlotQuality(hero, itemType, slotKey, item, avgScore) {
+  const h = HEROES[hero];
+  const list = itemType === 'badge' ? h.badge : h.gear;
+  const coreList = list.slice(0, 3);
+
+  const sc = scoreItem(hero, item.stats, item.quality, item.part, itemType, item.base);
+  const gap = avgScore - sc;
+
+  const coreOnSlot = item.stats
+    .map(s => ALIAS_MAP[s.name] || s.name)
+    .filter(n => coreList.includes(n));
+
+  const offStats = item.stats
+    .map(s => ALIAS_MAP[s.name] || s.name)
+    .filter(n => !list.includes(n));
+
+  const data = getHeroData(hero);
+  const slots = itemType === 'badge' ? data.badges : data.gears;
+  const otherOwned = new Set();
+  Object.keys(slots).forEach(k => {
+    if (k === slotKey) return;
+    slots[k].stats.forEach(s => otherOwned.add(ALIAS_MAP[s.name] || s.name));
+  });
+  const coreLostIfReplaced = coreOnSlot.filter(n => !otherOwned.has(n));
+  const coreMissingOnSlot = coreList.filter(n => !coreOnSlot.includes(n));
+
+  return { slot: slotKey, item, score: sc, gap, coreOnSlot, offStats, coreLostIfReplaced, coreMissingOnSlot };
+}
+
+function renderReplaceAdvice(name) {
+  const box = document.getElementById('replaceBox');
+  if (!box) return;
+  const h = HEROES[name];
+  const data = getHeroData(name);
+
+  const items = [];
+
+  const badgeSlots = Object.keys(data.badges);
+  if (badgeSlots.length > 0) {
+    const scores = badgeSlots.map(k => scoreItem(name, data.badges[k].stats, data.badges[k].quality, null, 'badge', data.badges[k].base));
+    const avg = scores.reduce((a,b)=>a+b, 0) / scores.length;
+    badgeSlots.forEach(k => {
+      items.push({ type: 'badge', info: analyzeSlotQuality(name, 'badge', k, data.badges[k], avg) });
+    });
+  }
+
+  const gearSlots = Object.keys(data.gears);
+  const gearByPart = {};
+  gearSlots.forEach(k => {
+    const g = data.gears[k];
+    if (!gearByPart[g.part]) gearByPart[g.part] = [];
+    gearByPart[g.part].push(k);
+  });
+  Object.keys(gearByPart).forEach(part => {
+    const keys = gearByPart[part];
+    const scores = keys.map(k => scoreItem(name, data.gears[k].stats, data.gears[k].quality, data.gears[k].part, 'gear', data.gears[k].base));
+    const avg = scores.reduce((a,b)=>a+b, 0) / scores.length;
+    keys.forEach(k => {
+      items.push({ type: 'gear', info: analyzeSlotQuality(name, 'gear', k, data.gears[k], avg) });
+    });
+  });
+
+  if (items.length === 0) {
+    box.innerHTML = `<div class="tip warn">还没有录入任何徽章或装备，先去上面添加。</div>`;
+    return;
+  }
+
+  items.sort((a, b) => b.info.gap - a.info.gap);
+
+  let html = '';
+  const top = items.slice(0, 3);
+
+  top.forEach((entry, idx) => {
+    const { type, info } = entry;
+    const item = info.item;
+    const isPriority = idx === 0 && info.gap > 0;
+
+    let suggestionStats = '';
+    if (info.coreMissingOnSlot.length > 0) {
+      suggestionStats = `建议换成带 <b>${info.coreMissingOnSlot.slice(0, 2).join('、')}</b> 的${type === 'badge' ? '徽章' : item.part}`;
+    } else if (info.offStats.length > 0) {
+      suggestionStats = `把 <b>${info.offStats.join('、')}</b> 换成更适配的词条`;
+    } else {
+      suggestionStats = `词条本身没问题，问题在基础属性偏低，找同部位更高数值的替换`;
+    }
+
+    const title = type === 'badge'
+      ? `徽章 槽 ${info.slot}`
+      : `装备 槽 ${info.slot}（${item.part}）`;
+
+    const tag = isPriority
+      ? `<span class="rc-tag" style="background:#5a3a1a;color:#f0c88a;border:1px solid #8a5a2a">优先换</span>`
+      : (info.gap > 0 ? `<span class="rc-tag">可以换</span>` : `<span class="rc-tag" style="color:#7ee2a8">暂时够用</span>`);
+
+    html += `<div class="replace-card ${isPriority ? 'priority' : ''}">
+      <div class="rc-head">
+        <span class="rc-title">${title}</span>
+        <span class="rc-score">${info.score.toFixed(2)} 分</span>
+      </div>
+      <div class="rc-body">
+        ${tag}
+        当前词条：${item.stats.map(statLabel).join('、') || '（无）'}<br>
+        ${baseLine(type, item.part, item.base)}
+        <div style="margin-top:6px">${suggestionStats}。</div>
+        ${info.coreLostIfReplaced.length > 0 ? `<div style="color:#e2d47e;margin-top:4px">⚠️ 换掉会丢核心词条：${info.coreLostIfReplaced.join('、')}，其他地方没覆盖。</div>` : ''}
+      </div>
+    </div>`;
+  });
+
+  const worst = top[0];
+  let conclusion;
+  if (worst.info.gap <= 0) {
+    conclusion = `当前配置整体比较均衡，没有明显拖后腿的槽位。`;
+  } else {
+    conclusion = `优先换 <b>${worst.type === 'badge' ? '徽章' : '装备'} 槽 ${worst.info.slot}</b>${worst.type === 'gear' ? `（${worst.info.item.part}）` : ''}，它比同部位平均分低 ${worst.info.gap.toFixed(2)} 分。`;
+    if (worst.info.coreMissingOnSlot.length > 0) {
+      conclusion += `换上后建议带 <b>${worst.info.coreMissingOnSlot.slice(0, 2).join('、')}</b>。`;
+    }
+  }
+
+  html += `<div class="tip suggest" style="margin-top:12px">${conclusion}</div>`;
+
+  box.innerHTML = html;
+}
+
+/* ============ 内联编辑 ============ */
+
+function inlineBadgeEditor(name, slotKey, b) {
+  return `<div class="inline-edit">
+    <div class="editing-hint">正在编辑槽 ${slotKey}</div>
+    <div class="field"><label>品质</label>
+      <select id="inlineBadgeQ">
+        <option value="1" ${b.quality == 1 ? 'selected' : ''}>青铜（紫）</option>
+        <option value="1.3" ${b.quality == 1.3 ? 'selected' : ''}>白银（橙）</option>
+        <option value="1.6" ${b.quality == 1.6 ? 'selected' : ''}>黄金（红）</option>
+      </select></div>
+    <div class="field"><label>基础属性数值</label>
+      <div class="baseline-row" id="inlineBadgeBaseRow"></div>
+    </div>
+    <div class="field"><label>词条（护甲/穿透类填数值，其余填百分比）</label>
+      <div id="inlineBadgeStats"></div></div>
+    <div class="actions">
+      <button class="btn small" onclick="saveInlineBadge('${name}','${slotKey}')">保存</button>
+      <button class="btn cancel small" onclick="cancelEdit('${name}')">取消</button>
+    </div>
+  </div>`;
+}
+
+function inlineGearEditor(name, slotKey, g) {
+  return `<div class="inline-edit">
+    <div class="editing-hint">正在编辑槽 ${slotKey}</div>
+    <div class="field"><label>部位</label>
+      <select id="inlineGearPart">
+        <option value="防具" ${g.part === '防具' ? 'selected' : ''}>防具</option>
+        <option value="兵刃" ${g.part === '兵刃' ? 'selected' : ''}>兵刃</option>
+        <option value="枪械" ${g.part === '枪械' ? 'selected' : ''}>枪械</option>
+      </select></div>
+    <div class="field"><label>品质</label>
+      <select id="inlineGearQ">
+        <option value="1" ${g.quality == 1 ? 'selected' : ''}>青铜（紫）</option>
+        <option value="1.3" ${g.quality == 1.3 ? 'selected' : ''}>白银（橙）</option>
+        <option value="1.6" ${g.quality == 1.6 ? 'selected' : ''}>黄金（红）</option>
+      </select></div>
+    <div class="field"><label>基础属性数值</label>
+      <div class="baseline-row" id="inlineGearBaseRow"></div>
+    </div>
+    <div class="field"><label>词条（护甲/穿透类填数值，其余填百分比）</label>
+      <div id="inlineGearStats"></div></div>
+    <div class="actions">
+      <button class="btn small" onclick="saveInlineGear('${name}','${slotKey}')">保存</button>
+      <button class="btn cancel small" onclick="cancelEdit('${name}')">取消</button>
+    </div>
+  </div>`;
+}
+
+const _origRenderBag = renderBag;
+renderBag = function(name) {
+  _origRenderBag(name);
+  initInlineEditors(name);
+  renderCandidatePoolInteractive(name);
+};
+
+function initInlineEditors(name) {
+  const data = getHeroData(name);
+  if (editingSlot.hero === name && editingSlot.type === 'badge') {
+    const b = data.badges[editingSlot.slot];
+    if (b) {
+      buildBaseFields(document.getElementById('inlineBadgeBaseRow'), 'badge', null, b.base, 'inlineBadgeBase');
+      buildStatPicker(document.getElementById('inlineBadgeStats'), b.stats);
+    }
+  }
+  if (editingSlot.hero === name && editingSlot.type === 'gear') {
+    const g = data.gears[editingSlot.slot];
+    if (g) {
+      buildBaseFields(document.getElementById('inlineGearBaseRow'), 'gear', g.part, g.base, 'inlineGearBase');
+      buildStatPicker(document.getElementById('inlineGearStats'), g.stats);
+      document.getElementById('inlineGearPart').onchange = function() {
+        buildBaseFields(document.getElementById('inlineGearBaseRow'), 'gear', this.value, g.base, 'inlineGearBase');
+      };
+    }
+  }
+}
+
+function saveInlineBadge(name, slotKey) {
+  const q = parseFloat(document.getElementById('inlineBadgeQ').value);
+  const stats = getSelected(document.getElementById('inlineBadgeStats'));
+  const base = readBaseFields('badge', null, 'inlineBadgeBase');
+  if (stats.length === 0) { alert('请至少选一个词条'); return; }
+  getHeroData(name).badges[slotKey] = { quality: q, stats, base };
+  editingSlot = { hero: null, type: null, slot: null };
+  saveConfig(CONFIG);
+
+  justReplaced = { hero: name, type: 'badge', slot: slotKey };
+  renderBag(name);
+  setTimeout(() => {
+    const el = document.getElementById('slot-badge-' + slotKey);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, 100);
+}
+
+function saveInlineGear(name, slotKey) {
+  const part = document.getElementById('inlineGearPart').value;
+  const q = parseFloat(document.getElementById('inlineGearQ').value);
+  const stats = getSelected(document.getElementById('inlineGearStats'));
+  const base = readBaseFields('gear', part, 'inlineGearBase');
+  if (stats.length === 0) { alert('请至少选一个词条'); return; }
+  getHeroData(name).gears[slotKey] = { part, quality: q, stats, base };
+  editingSlot = { hero: null, type: null, slot: null };
+  saveConfig(CONFIG);
+
+  justReplaced = { hero: name, type: 'gear', slot: slotKey };
+  renderBag(name);
+  setTimeout(() => {
+    const el = document.getElementById('slot-gear-' + slotKey);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, 100);
+}
+
+function firstEmptySlot(slots, max) {
+  for (let i = 1; i <= max; i++) {
+    if (!slots[String(i)]) return String(i);
+  }
+  return null;
+}
+
+function saveBadge(name) {
+  const q = parseFloat(document.getElementById('addBadgeQ').value);
+  const stats = getSelected(document.getElementById('addBadgeStats'));
+  const base = readBaseFields('badge', null, 'addBadgeBase');
+  if (stats.length === 0) { alert('请至少选一个词条'); return; }
+  const data = getHeroData(name);
+  const slotKey = firstEmptySlot(data.badges, MAX_BADGES);
+  if (!slotKey) { alert('徽章已满 ' + MAX_BADGES + ' 个'); return; }
+  data.badges[slotKey] = { quality: q, stats, base };
+  saveConfig(CONFIG);
+  renderBag(name);
+  alert('已添加到槽 ' + slotKey);
+}
+
+function saveGear(name) {
+  const part = document.getElementById('addGearPart').value;
+  const q = parseFloat(document.getElementById('addGearQ').value);
+  const stats = getSelected(document.getElementById('addGearStats'));
+  const base = readBaseFields('gear', part, 'addGearBase');
+  if (stats.length === 0) { alert('请至少选一个词条'); return; }
+  const data = getHeroData(name);
+  const slotKey = firstEmptySlot(data.gears, MAX_GEARS);
+  if (!slotKey) { alert('装备已满 ' + MAX_GEARS + ' 个'); return; }
+  data.gears[slotKey] = { part, quality: q, stats, base };
+  saveConfig(CONFIG);
+  renderBag(name);
+  alert('已添加到槽 ' + slotKey);
+}
+
+function clearSlot(name, type, slotKey) {
+  const data = getHeroData(name);
+  delete data[type][slotKey];
+  if (editingSlot.hero === name && editingSlot.type === type && editingSlot.slot === slotKey) {
+    editingSlot = { hero: null, type: null, slot: null };
+  }
+  justReplaced = null;
+  saveConfig(CONFIG);
+  renderBag(name);
+}
+
+function editBadge(name, slotKey) {
+  if (editingSlot.hero === name && editingSlot.type === 'badge' && editingSlot.slot === slotKey) {
+    editingSlot = { hero: null, type: null, slot: null };
+  } else {
+    editingSlot = { hero: name, type: 'badge', slot: slotKey };
+  }
+  justReplaced = null;
+  renderBag(name);
+}
+
+function editGear(name, slotKey) {
+  if (editingSlot.hero === name && editingSlot.type === 'gear' && editingSlot.slot === slotKey) {
+    editingSlot = { hero: null, type: null, slot: null };
+  } else {
+    editingSlot = { hero: name, type: 'gear', slot: slotKey };
+  }
+  justReplaced = null;
+  renderBag(name);
+}
+
+function cancelEdit(name) {
+  editingSlot = { hero: null, type: null, slot: null };
+  renderBag(name);
+}
+
+/* ============ 分支式分析 ============ */
+
+function tieBreak(hero, itemType, part, a, b) {
+  const list = itemType === 'badge' ? HEROES[hero].badge : HEROES[hero].gear;
+
+  function statRankScore(item) {
+    let sum = 0;
+    item.stats.forEach(s => {
+      const idx = list.indexOf(s.name);
+      if (idx >= 0) sum += (list.length - idx);
+    });
+    return sum;
+  }
+  const aStat = statRankScore(a);
+  const bStat = statRankScore(b);
+  if (aStat !== bStat) return aStat > bStat ? 'a' : 'b';
+
+  const aBase = scoreBase(hero, itemType, part, a.base);
+  const bBase = scoreBase(hero, itemType, part, b.base);
+  if (Math.abs(aBase - bBase) > 0.001) return aBase > bBase ? 'a' : 'b';
+
+  if (a.quality !== b.quality) return a.quality > b.quality ? 'a' : 'b';
+
+  return 'tie';
+}
+
+function buildFlexibleAnalysis(hero, itemType, newStats, newQ, newPart, newBase, oldItem, oldSlot) {
+  const h = HEROES[hero];
+  const heroList = itemType === 'badge' ? h.badge : h.gear;
+  const oldPart = oldItem.part || null;
+
+  const newStatScore = scoreStats(hero, newStats, newQ, newPart, itemType);
+  const newBaseScore = scoreBase(hero, itemType, newPart, newBase);
+  const oldStatScore = scoreStats(hero, oldItem.stats, oldItem.quality, oldPart, itemType);
+  const oldBaseScore = scoreBase(hero, itemType, oldPart, oldItem.base || {});
+
+  const statGain = newStatScore - oldStatScore;
+  const baseGain = newBaseScore - oldBaseScore;
+  const totalGain = statGain + baseGain;
+
+  const partMismatch = itemType === 'gear' && oldPart && newPart && oldPart !== newPart;
+
+  const baseRatio = (() => {
+    if (oldBaseScore <= 0) return newBaseScore > 0 ? 99 : 1;
+    return newBaseScore / oldBaseScore;
+  })();
+
+  const oldNames = new Set(oldItem.stats.map(s => ALIAS_MAP[s.name] || s.name));
+  const newNames = new Set(newStats.map(s => ALIAS_MAP[s.name] || s.name));
+  const lostCore = [];
+  const lostDilutable = [];
+  oldItem.stats.forEach(s => {
+    const n = ALIAS_MAP[s.name] || s.name;
+    if (newNames.has(n)) return;
+    const idx = heroList.indexOf(n);
+    if (idx >= 0 && idx <= 2) lostCore.push({ name: n, rank: idx + 1 });
+    if (isDilutable(n)) lostDilutable.push(n);
+  });
+  const gainedCore = [];
+  const gainedOff = [];
+  newStats.forEach(s => {
+    const n = ALIAS_MAP[s.name] || s.name;
+    const idx = heroList.indexOf(n);
+    if (idx >= 0 && idx <= 2) gainedCore.push({ name: n, rank: idx + 1 });
+    if (idx < 0) gainedOff.push(n);
+  });
+
+  const thresholdWarnings = analyzeThresholdShift(hero, oldItem, newStats);
+
+  const lines = [];
+
+  if (partMismatch) {
+    lines.push({ cls: 'bad', text: `❌ 部位不匹配：当前槽是 ${oldPart}，新物品是 ${newPart}。装备只能放在同部位，这件换不上去。` });
+    return { lines, verdict: `不能换：部位不一致`, verdictClass: 'keep' };
+  }
+
+  const newAllDilutable = newStats.length > 0 && newStats.every(s => isDilutable(s.name));
+  const oldAllDilutable = oldItem.stats.length > 0 && oldItem.stats.every(s => isDilutable(s.name));
+  if (newAllDilutable && oldAllDilutable && Math.abs(totalGain) < 1) {
+    lines.push({ cls: 'info', text: `两边都是通用增伤词条，收益都被稀释，换不换基本没区别。建议把资源留给带攻击/穿透/暴击的装备。` });
+    return { lines, verdict: `不建议换：都是易稀释词条`, verdictClass: 'keep' };
+  }
+
+  if (baseRatio >= 3 || baseRatio <= 1/3) {
+    if (baseRatio >= 3) {
+      lines.push({ cls: 'good', text: `✅ 基础属性碾压：新物品基础分是当前的 <b>${baseRatio.toFixed(1)} 倍</b>，词条差距根本不用看，直接换。` });
+    } else {
+      lines.push({ cls: 'bad', text: `❌ 基础属性被碾压：新物品基础分只有当前的 <b>${(baseRatio*100).toFixed(0)}%</b>，词条再好也补不回来，别换。` });
+    }
+    return {
+      lines,
+      verdict: baseRatio >= 3 ? `建议换到槽 ${oldSlot}（基础属性碾压）` : `不建议换，保留槽 ${oldSlot}（基础属性差太多）`,
+      verdictClass: baseRatio >= 3 ? 'swap' : 'keep'
+    };
+  }
+
+  if (Math.abs(statGain) >= 2 && Math.abs(baseGain) < Math.abs(statGain) * 0.5) {
+    if (statGain > 0) {
+      lines.push({ cls: 'good', text: `✅ 词条碾压：新物品词条分比当前高 <b>${statGain.toFixed(2)}</b>，基础属性差距不大，词条优势直接决定换。` });
+    } else {
+      lines.push({ cls: 'bad', text: `❌ 词条被碾压：新物品词条分比当前低 <b>${Math.abs(statGain).toFixed(2)}</b>，基础属性补不回来。` });
+    }
+    if (gainedCore.length > 0) {
+      lines.push({ cls: 'good', text: `新物品带的核心词条：${gainedCore.map(g => `【${g.name}】(第${g.rank}优先)`).join('、')}。` });
+    }
+    return {
+      lines,
+      verdict: statGain > 0 ? `建议换到槽 ${oldSlot}（词条碾压）` : `不建议换，保留槽 ${oldSlot}（词条差太多）`,
+      verdictClass: statGain > 0 ? 'swap' : 'keep'
+    };
+  }
+
+  if (gainedOff.length > 0 && gainedCore.length === 0 && newStats.every(s => !heroList.includes(ALIAS_MAP[s.name] || s.name))) {
+    lines.push({ cls: 'bad', text: `❌ 词条完全错位：新物品的词条 ${gainedOff.map(n => `【${n}】`).join('、')} 全部不在${hero}的推荐列表里，这件对他没用。` });
+    return { lines, verdict: `不建议换：词条和英雄不搭`, verdictClass: 'keep' };
+  }
+
+  if (lostCore.length > 0 && gainedCore.length > 0 && Math.abs(totalGain) <= 2) {
+    lines.push({ cls: 'warn', text: `换掉槽 ${oldSlot} 会丢核心词条：${lostCore.map(l => `【${l.name}】(第${l.rank}优先)`).join('、')}。` });
+    lines.push({ cls: 'good', text: `新物品补上核心词条：${gainedCore.map(g => `【${g.name}】(第${g.rank}优先)`).join('、')}。` });
+    lines.push({ cls: 'info', text: `属于一换一，换不换取决于你更需要哪个方向。` });
+  } else {
+    if (Math.abs(statGain) < 0.5 && Math.abs(baseGain) < 0.5) {
+      lines.push({ cls: 'info', text: `词条和基础属性都基本持平（词条 ${statGain >= 0 ? '+' : ''}${statGain.toFixed(2)}，基础 ${baseGain >= 0 ? '+' : ''}${baseGain.toFixed(2)}），换不换没区别，留着当备胎。` });
+    } else if (Math.abs(statGain) < 0.5 && baseGain > 0.5) {
+      lines.push({ cls: 'good', text: `词条持平，基础属性更高（+${baseGain.toFixed(2)}），可以换。` });
+    } else if (Math.abs(statGain) < 0.5 && baseGain < -0.5) {
+      lines.push({ cls: 'bad', text: `词条持平，基础属性更低（${baseGain.toFixed(2)}），不值得换。` });
+    } else if (statGain > 0.5 && baseGain < -0.5) {
+      lines.push({ cls: 'info', text: `词条更好（+${statGain.toFixed(2)}），基础属性略低（${baseGain.toFixed(2)}），看你的实际需求。` });
+    } else if (statGain < -0.5 && baseGain > 0.5) {
+      lines.push({ cls: 'warn', text: `基础属性更高（+${baseGain.toFixed(2)}），但词条更差（${statGain.toFixed(2)}）。属于基础撑分、词条吃亏的类型，看你缺不缺基础。` });
+    } else if (statGain > 0.5 && baseGain > 0.5) {
+      lines.push({ cls: 'good', text: `词条和基础属性都更好（词条 +${statGain.toFixed(2)}，基础 +${baseGain.toFixed(2)}），放心换。` });
+    } else {
+      lines.push({ cls: 'info', text: `词条 ${statGain >= 0 ? '+' : ''}${statGain.toFixed(2)}，基础 ${baseGain >= 0 ? '+' : ''}${baseGain.toFixed(2)}，综合算下来${totalGain > 0 ? '略优' : '略差'}。` });
+    }
+
+    if (lostCore.length > 0) {
+      lines.push({ cls: 'warn', text: `⚠️ 换掉会丢核心词条：${lostCore.map(l => `【${l.name}】(第${l.rank}优先)`).join('、')}。` });
+    }
+    if (lostDilutable.length > 0) {
+      lines.push({ cls: 'info', text: `换掉会丢通用增伤：${lostDilutable.join('、')}，损失可控。` });
+    }
+    if (gainedCore.length > 0) {
+      lines.push({ cls: 'good', text: `新物品带核心词条：${gainedCore.map(g => `【${g.name}】`).join('、')}。` });
+    }
+    if (gainedOff.length > 0) {
+      lines.push({ cls: 'warn', text: `新物品带优先级外的词条：${gainedOff.join('、')}，收益有限。` });
+    }
+  }
+
+  const newDilutable = newStats.filter(s => isDilutable(s.name));
+  if (newDilutable.length > 0) {
+    lines.push({ cls: 'info', text: `新物品带通用增伤：${newDilutable.map(s => `【${s.name}】`).join('、')}，对物理和能量都生效，不是虚战，但优先级低于攻击和穿透。` });
+  }
+
+  thresholdWarnings.forEach(w => {
+    lines.push({ cls: 'warn', text: `⚠️ ${w}` });
+  });
+
+  let verdict, verdictClass;
+  if (totalGain > 0.5) { verdict = `建议换到槽 ${oldSlot}`; verdictClass = 'swap'; }
+  else if (totalGain < -0.5) { verdict = `不建议换，保留槽 ${oldSlot}`; verdictClass = 'keep'; }
+  else {
+    const who = tieBreak(hero, itemType, itemType === 'gear' ? (newPart || oldPart) : null,
+      { stats: newStats, quality: newQ, base: newBase },
+      { stats: oldItem.stats, quality: oldItem.quality, base: oldItem.base });
+    if (who === 'a') { verdict = `基本同分，新物品略优`; verdictClass = 'swap'; }
+    else if (who === 'b') { verdict = `基本同分，当前略优，建议保留`; verdictClass = 'keep'; }
+    else { verdict = `基本同分，两者等价`; verdictClass = 'tie'; }
+  }
+
+  return { lines, verdict, verdictClass };
+}
+
+function analyzeThresholdShift(hero, oldItem, newStats) {
+  const oldTotals = calcStatTotals(hero);
+  const newTotals = {};
+  Object.keys(oldTotals).forEach(k => newTotals[k] = oldTotals[k]);
+
+  oldItem.stats.forEach(s => {
+    const n = ALIAS_MAP[s.name] || s.name;
+    newTotals[n] = (newTotals[n] || 0) - (s.pct || 0);
+  });
+  newStats.forEach(s => {
+    const n = ALIAS_MAP[s.name] || s.name;
+    newTotals[n] = (newTotals[n] || 0) + (s.pct || 0);
+  });
+
+  const warnings = [];
+  Object.keys(STAT_THRESHOLDS).forEach(statName => {
+    const t = STAT_THRESHOLDS[statName];
+    const oldV = oldTotals[statName] || 0;
+    const newV = newTotals[statName] || 0;
+    if (newV > oldV && newV >= t.cap && oldV < t.cap) {
+      warnings.push(`${statName} 会从 ${oldV.toFixed(2)}% 推到 ${newV.toFixed(2)}%，超过 ${t.cap}% 阈值。${t.note}。`);
+    } else if (newV > oldV && newV >= t.warn && oldV < t.warn) {
+      warnings.push(`${statName} 会从 ${oldV.toFixed(2)}% 推到 ${newV.toFixed(2)}%，进入 ${t.warn}% 的注意区间。${t.note}。`);
+    }
+  });
+  return warnings;
+}
+
+/* ============ 阵容玩法 ============ */
+
+const PRESET_TEAMS = {
+  "国家队（兰博核心）": {
+    heroes: ["大嘴山姆", "兰博", "巫师老侃", "机器屠夫", "蜜雪儿"],
+    core: "大嘴山姆嘲讽承伤，巫师老侃增伤套盾，兰博爆发输出，机器屠夫钩后排，蜜雪儿控场。",
+    position: "大嘴山姆前排，兰博/老侃后置，屠夫侧方切后",
+    source: "攻略验证：主线、海域探索、日常副本通用"
+  },
+  "群伤队": {
+    heroes: ["雷教授", "一龙", "大嘴山姆", "鬼火杰森", "米娅"],
+    core: "大嘴山姆嘲讽聚敌，一龙/雷教授放范围技能打群伤，米娅控辅，杰森前排输出。",
+    position: "山姆前排聚怪，一龙/教授后排输出",
+    source: "攻略验证：群伤队标准配置"
+  },
+  "刺客队（PVP速杀）": {
+    heroes: ["北境大帝", "小丑杰克", "大嘴山姆", "戴安娜", "巫师老侃"],
+    core: "戴安娜破甲，大帝/小丑突入后排切脆皮，老侃辅助。",
+    position: "大帝/小丑突后，山姆前排限制，戴安娜削甲",
+    source: "攻略验证：竞技场、PVP速杀"
+  },
+  "召唤队": {
+    heroes: ["李忠诚", "机修萝莉", "神父欧玛", "不死州长", "大嘴山姆"],
+    core: "李忠诚/机修萝莉召唤物分担伤害，神父欧玛群体治疗，不死州长/山姆前排。",
+    position: "召唤物分散仇恨，州长/山姆前排",
+    source: "攻略验证：召唤流标准配置"
+  },
+  "闪避队": {
+    heroes: ["铁腿红魔", "雷教授", "拳王肯爷", "米娅", "不死州长"],
+    core: "拳王肯爷全队加闪避，降低敌人能量恢复，铁腿红魔/雷教授输出。",
+    position: "肯爷前排叠闪避，红魔/教授后排",
+    source: "攻略验证：闪避流标准配置"
+  },
+  "新国家队（召唤流变体）": {
+    heroes: ["永生老乔", "自由斗士", "李忠诚", "北境大帝", "机修萝莉"],
+    core: "老乔输出流，斗士主肉，忠诚攻速，萝莉召唤物，大帝搅局。",
+    position: "斗士/大帝前排，老乔后排输出",
+    source: "攻略验证：跨服新国家队"
+  },
+  "S5赛季阵容": {
+    heroes: ["雾隐千代", "自由斗士", "巫师老侃", "铁肘老大", "海底之王"],
+    core: "海底之王断能量，铁肘老大物理扫射，千代不可选中切后排，老侃辅助。",
+    position: "海底/斗士双坦，千代/铁肘后排输出",
+    source: "攻略验证：S5赛季标准阵容"
+  },
+  "世界BOSS持久队": {
+    heroes: ["大嘴山姆", "终结者", "兰博", "神父欧玛", "蜜雪儿"],
+    core: "双坦扛伤，兰博叠伤，神父治疗+暴击，蜜雪儿控BOSS。",
+    position: "山姆/终结者前排，兰博后排输出",
+    source: "攻略验证：世界BOSS/深渊爬塔"
+  }
+};
+
+(function initPresetTeams() {
+  const sel = document.getElementById('presetTeam');
+  if (!sel) return;
+  Object.keys(PRESET_TEAMS).forEach(name => {
+    const o = document.createElement('option');
+    o.value = name; o.textContent = name;
+    sel.appendChild(o);
+  });
+  sel.onchange = renderPresetResult;
+})();
+
+(function initFreeHeroChips() {
+  const el = document.getElementById('freeHeroChips');
+  if (!el) return;
+  Object.keys(HEROES).forEach(name => {
+    const c = document.createElement('div');
+    c.className = 'chip hero-chip';
+    c.textContent = name;
+    c.onclick = () => {
+      if (freeSelected.includes(name)) {
+        freeSelected = freeSelected.filter(x => x !== name);
+        c.classList.remove('active');
+      } else {
+        if (freeSelected.length >= 5) { alert('最多选 5 个英雄'); return; }
+        freeSelected.push(name);
+        c.classList.add('active');
+      }
+      renderFreeResult();
+    };
+    el.appendChild(c);
+  });
+})();
+
+function renderTeamConflict(heroes) {
+  if (!heroes || heroes.length === 0) return '';
+
+  const statUsers = {};
+  heroes.forEach(h => {
+    const hero = HEROES[h];
+    if (!hero) return;
+    const core = [...new Set([...hero.badge.slice(0, 3), ...hero.gear.slice(0, 3)])];
+    core.forEach(s => {
+      if (!statUsers[s]) statUsers[s] = [];
+      statUsers[s].push(h);
+    });
+  });
+
+  const conflicts = Object.keys(statUsers).filter(s => statUsers[s].length >= 2);
+  const uniqueNeeds = Object.keys(statUsers).filter(s => statUsers[s].length === 1);
+
+  let html = `<div class="analysis">
+    <h4>📋 词条冲突提醒</h4>`;
+
+  if (conflicts.length === 0) {
+    html += `<div class="line good">✅ 这 5 个英雄的核心词条没有明显冲突，资源分配压力小。</div>`;
+  } else {
+    conflicts.forEach(s => {
+      const users = statUsers[s];
+      let priority = '';
+      if (s === '攻击速度') priority = '优先给普攻型主C（兰博/小丑杰克/铁肘老大），技能型英雄先不抢。';
+      else if (s === '暴击') priority = '优先给爆发输出（铁腿红魔/小丑杰克/雷教授），坦克先不抢。';
+      else if (s === '技能强度') priority = '优先给能量技能型主C和辅助（鬼火杰森/雷教授/巫师老侃），物理输出先不抢。';
+      else if (s === '攻击') priority = '优先给物理输出（铁腿红魔/兰博/小丑杰克），能量输出先不抢。';
+      else if (s === '生命') priority = '前排优先，输出位最后补。';
+      else if (s === '伤害减免') priority = '前排优先，输出位最后补。';
+      else if (s === '护甲穿透') priority = '优先给物理输出（铁腿红魔/铁肘老大），能量英雄先不抢。';
+      else if (s === '抗性穿透') priority = '优先给能量输出（鬼火杰森/雷教授/永生老乔），物理输出先不抢。';
+      else priority = '按英雄定位分配，主C优先。';
+
+      html += `<div class="line warn">⚠️ <b>${s}</b>：${users.join('、')} 都要。${priority}</div>`;
+    });
+  }
+
+  if (uniqueNeeds.length > 0) {
+    html += `<div class="line info">独占需求：${uniqueNeeds.join('、')}，这些词条只有一个人要，资源不冲突。</div>`;
+  }
+
+  html += `<div class="conclusion tie">资源有限时，先满足冲突词条里的主C，再补辅助和坦克。</div></div>`;
+  return html;
+}
+
+function renderPresetResult() {
+  const name = document.getElementById('presetTeam').value;
+  const team = PRESET_TEAMS[name];
+  const box = document.getElementById('presetResult');
+  if (!team) { box.innerHTML = ''; return; }
+
+  let html = `<div class="card"><h2>${name}</h2>
+    <div class="row"><div class="label">阵容</div><div class="vals">`;
+  team.heroes.forEach(h => {
+    const hero = HEROES[h];
+    const role = hero ? hero.role : '未知';
+    const dmg = hero ? hero.damageType : '';
+    const out = hero ? hero.outputType : '';
+    html += `<span class="val first">${h}（${role}·${dmg}·${out}）</span>`;
+  });
+  html += `</div></div>
+    <div class="row"><div class="label">核心思路</div><div class="tip">${team.core}</div></div>
+    <div class="row"><div class="label">站位建议</div><div class="tip">${team.position}</div></div>
+    <div class="row"><div class="label">来源</div><div class="tip warn">${team.source}</div></div>
+  </div>`;
+
+  const roles = { "坦克": 0, "战士": 0, "法师": 0, "射手": 0 };
+  team.heroes.forEach(h => {
+    if (HEROES[h]) roles[HEROES[h].role] = (roles[HEROES[h].role] || 0) + 1;
+  });
+  html += `<div class="analysis">
+    <h4>📋 阵容职业配比</h4>`;
+  Object.keys(roles).forEach(r => {
+    html += `<div class="line ${roles[r] > 0 ? 'good' : ''}">${r}：${roles[r]} 个</div>`;
+  });
+  html += `<div class="conclusion tie">该阵容共 5 人，职业配比见上。</div></div>`;
+
+  html += renderTeamConflict(team.heroes);
+
+  box.innerHTML = html;
+}
+
+function renderFreeResult() {
+  const box = document.getElementById('freeResult');
+  if (!box) return;
+  if (freeSelected.length === 0) {
+    box.innerHTML = `<div class="tip">请选择 5 个英雄。</div>`;
+    return;
+  }
+
+  const roles = { "坦克": 0, "战士": 0, "法师": 0, "射手": 0 };
+  freeSelected.forEach(h => {
+    if (HEROES[h]) roles[HEROES[h].role] = (roles[HEROES[h].role] || 0) + 1;
+  });
+
+  let html = `<div class="card"><h2>自由阵容（${freeSelected.length}/5）</h2>
+    <div class="vals">`;
+  freeSelected.forEach(h => {
+    const hero = HEROES[h];
+    html += `<span class="val first">${h}（${hero ? hero.role : '未知'}·${hero ? hero.damageType : ''}·${hero ? hero.outputType : ''}）</span>`;
+  });
+  html += `</div></div>`;
+
+  html += `<div class="analysis">
+    <h4>📋 职业配比</h4>`;
+  Object.keys(roles).forEach(r => {
+    html += `<div class="line ${roles[r] > 0 ? 'good' : 'warn'}">${r}：${roles[r]} 个</div>`;
+  });
+
+  const lines = [];
+  if (roles["坦克"] === 0) lines.push({ cls: 'bad', text: '⚠️ 没有坦克，前排扛不住，建议补 1 个坦克。' });
+  if (roles["坦克"] >= 1) lines.push({ cls: 'good', text: '✅ 有坦克，前排有承伤。' });
+  if (roles["射手"] === 0 && roles["战士"] === 0 && roles["法师"] === 0) lines.push({ cls: 'bad', text: '⚠️ 没有输出，打不动人。' });
+  if (roles["法师"] === 0) lines.push({ cls: 'warn', text: '⚠️ 没有法师/辅助，缺增伤和控制。' });
+  if (roles["坦克"] >= 3) lines.push({ cls: 'warn', text: '⚠️ 坦克过多（3+），输出可能不足。' });
+  if (roles["射手"] + roles["战士"] + roles["法师"] >= 4) lines.push({ cls: 'good', text: '✅ 输出/辅助充足。' });
+
+  lines.forEach(l => { html += `<div class="line ${l.cls}">${l.text}</div>`; });
+
+  html += `<div class="conclusion ${roles["坦克"] === 0 ? 'keep' : 'swap'}">${roles["坦克"] === 0 ? '建议补 1 个坦克再上阵' : '阵容基本完整，可上阵'}</div></div>`;
+
+  if (roles["坦克"] === 0) {
+    html += `<div class="tip suggest"><b>推荐补坦克：</b>`;
+    ["大嘴山姆", "机器屠夫", "不死州长", "巨石绿魔"].forEach(t => {
+      html += `<span class="val first">${t}</span> `;
+    });
+    html += `</div>`;
+  }
+
+  html += renderTeamConflict(freeSelected);
+
+  box.innerHTML = html;
+}
+
+document.getElementById('teamMode').onchange = function() {
+  const isPreset = this.value === 'preset';
+  document.getElementById('presetMode').style.display = isPreset ? 'block' : 'none';
+  document.getElementById('freeMode').style.display = isPreset ? 'none' : 'block';
+  if (isPreset) renderPresetResult();
+  else renderFreeResult();
+};
+
+renderPresetResult();
+
+/* ============ 导出/导入 ============ */
+
+function doExport() {
+  const area = document.getElementById('exportArea');
+  try {
+    area.value = JSON.stringify(CONFIG);
+  } catch(e) {
+    area.value = '导出失败：' + e.message;
+  }
+}
+
+function copyExport() {
+  const area = document.getElementById('exportArea');
+  if (!area.value) { alert('请先生成备份文字'); return; }
+  area.select();
+  area.setSelectionRange(0, 999999);
+  try {
+    document.execCommand('copy');
+    alert('已复制，粘贴到微信/备忘录/电脑保存即可。');
+  } catch(e) {
+    alert('复制失败，请手动全选复制。');
+  }
+}
+
+function doImport() {
+  const area = document.getElementById('importArea');
+  const txt = area.value.trim();
+  if (!txt) { alert('请先粘贴备份文字'); return; }
+  let parsed;
+  try {
+    parsed = JSON.parse(txt);
+  } catch(e) {
+    alert('备份文字格式不对，无法解析。请确认完整复制了备份文字。');
+    return;
+  }
+  if (!parsed || typeof parsed !== 'object') {
+    alert('备份内容不是有效的数据对象。');
+    return;
+  }
+  if (!confirm('导入会覆盖当前手机上的所有配置数据，确定继续吗？')) return;
+
+  CONFIG = parsed;
+  saveConfig(CONFIG);
+  alert('导入成功，正在刷新页面...');
+  location.reload();
+}
+
+function switchTab(panelId) {
+  document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
+  const tab = document.querySelector(`.tab[data-panel="${panelId}"]`);
+  if (tab) tab.classList.add('active');
+  const panel = document.getElementById(panelId);
+  if (panel) panel.classList.add('active');
+}
+
+document.querySelectorAll('.tab').forEach(t => {
+  t.onclick = () => {
+    switchTab(t.dataset.panel);
+  };
+});
+
+if (activeBagHero) {
+  renderBag(activeBagHero);
+}
+</script>
+</body>
+</html>
