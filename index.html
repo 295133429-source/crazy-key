@@ -436,10 +436,15 @@
     <div id="presetResult"></div>
   </div>
 
-  <div id="freeMode" style="display:none">
+    <div id="freeMode" style="display:none">
     <div class="form-block">
-      <h3>选择 5 个英雄</h3>
-      <div class="chips" id="freeHeroChips"></div>
+      <h3>选择英雄（最多 5 个）</h3>
+      <div class="field" style="margin-bottom:8px">
+        <select id="freeHeroSelect">
+          <option value="">— 请选择英雄 —</option>
+        </select>
+      </div>
+      <div id="freeSelectedChips" class="chips" style="margin-bottom:0"></div>
     </div>
     <div id="freeResult"></div>
   </div>
@@ -2835,27 +2840,54 @@ const PRESET_TEAMS = {
   sel.onchange = renderPresetResult;
 })();
 
-function initFreeHeroChips() {
-  const el = document.getElementById('freeHeroChips');
-  if (!el) return;
-  if (el.dataset.inited === '1') return;
-  el.dataset.inited = '1';
+function initFreeHeroSelect() {
+  const sel = document.getElementById('freeHeroSelect');
+  if (!sel) return;
+  if (sel.dataset.inited === '1') return;
+  sel.dataset.inited = '1';
   Object.keys(HEROES).forEach(name => {
+    const o = document.createElement('option');
+    o.value = name; o.textContent = name;
+    sel.appendChild(o);
+  });
+  sel.onchange = () => {
+    const name = sel.value;
+    if (!name) return;
+    if (freeSelected.includes(name)) {
+      alert('这个英雄已经在阵容里了');
+      sel.value = '';
+      return;
+    }
+    if (freeSelected.length >= 5) {
+      alert('最多选 5 个英雄');
+      sel.value = '';
+      return;
+    }
+    freeSelected.push(name);
+    sel.value = '';
+    renderFreeSelectedChips();
+    renderFreeResult();
+  };
+}
+
+function renderFreeSelectedChips() {
+  const box = document.getElementById('freeSelectedChips');
+  if (!box) return;
+  box.innerHTML = '';
+  if (freeSelected.length === 0) {
+    box.innerHTML = `<span style="font-size:12px;color:#7a8a9a">还没选英雄</span>`;
+    return;
+  }
+  freeSelected.forEach(name => {
     const c = document.createElement('div');
-    c.className = 'chip hero-chip';
-    c.textContent = name;
+    c.className = 'chip hero-chip active';
+    c.textContent = name + ' ×';
     c.onclick = () => {
-      if (freeSelected.includes(name)) {
-        freeSelected = freeSelected.filter(x => x !== name);
-        c.classList.remove('active');
-      } else {
-        if (freeSelected.length >= 5) { alert('最多选 5 个英雄'); return; }
-        freeSelected.push(name);
-        c.classList.add('active');
-      }
+      freeSelected = freeSelected.filter(x => x !== name);
+      renderFreeSelectedChips();
       renderFreeResult();
     };
-    el.appendChild(c);
+    box.appendChild(c);
   });
 }
 
@@ -3001,7 +3033,10 @@ document.getElementById('teamMode').onchange = function() {
   document.getElementById('presetMode').style.display = isPreset ? 'block' : 'none';
   document.getElementById('freeMode').style.display = isPreset ? 'none' : 'block';
   if (isPreset) renderPresetResult();
-  else renderFreeResult();
+  else {
+    renderFreeSelectedChips();
+    renderFreeResult();
+  }
 };
 
 renderPresetResult();
@@ -3071,6 +3106,9 @@ document.querySelectorAll('.tab').forEach(t => {
 if (activeBagHero) {
   renderBag(activeBagHero);
 }
+
+initFreeHeroSelect();
+renderFreeSelectedChips();
 
 initFreeHeroChips();
 </script>
