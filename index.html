@@ -2835,9 +2835,11 @@ const PRESET_TEAMS = {
   sel.onchange = renderPresetResult;
 })();
 
-(function initFreeHeroChips() {
+function initFreeHeroChips() {
   const el = document.getElementById('freeHeroChips');
   if (!el) return;
+  if (el.dataset.inited === '1') return;
+  el.dataset.inited = '1';
   Object.keys(HEROES).forEach(name => {
     const c = document.createElement('div');
     c.className = 'chip hero-chip';
@@ -2855,7 +2857,7 @@ const PRESET_TEAMS = {
     };
     el.appendChild(c);
   });
-})();
+}
 
 function renderTeamConflict(heroes) {
   if (!heroes || heroes.length === 0) return '';
@@ -3069,6 +3071,8 @@ document.querySelectorAll('.tab').forEach(t => {
 if (activeBagHero) {
   renderBag(activeBagHero);
 }
+
+initFreeHeroChips();
 </script>
 </body>
 </html>
