@@ -4,7 +4,45 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>疯狂水世界 · 分析器</title>
-<style>
+<style> .training-preset-row {
+    display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;
+  }
+  .training-preset {
+    padding: 6px 12px; font-size: 13px; border-radius: 8px;
+    background: #1e2a36; border: 1px solid #2a3a48;
+    cursor: pointer; user-select: none;
+  }
+  .training-preset.on {
+    background: #2a6df4; border-color: #2a6df4; color: #fff; font-weight: 600;
+  }
+  .dir-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 6px 0; font-size: 13px;
+  }
+  .dir-row .dir-name {
+    width: 80px; flex-shrink: 0; color: #b8c8d8;
+  }
+  .dir-row input[type=range] {
+    flex: 1; -webkit-appearance: none; height: 4px; border-radius: 2px;
+    background: #24313d; outline: none;
+  }
+  .dir-row input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 16px; height: 16px;
+    border-radius: 50%; background: #2a6df4; cursor: pointer;
+  }
+  .dir-row input[type=range]::-moz-range-thumb {
+    width: 16px; height: 16px; border-radius: 50%;
+    background: #2a6df4; cursor: pointer; border: none;
+  }
+  .dir-row .dir-val {
+    width: 42px; text-align: right; font-family: monospace; font-size: 12px;
+  }
+  .dir-row .dir-val.up { color: #7ee2a8; font-weight: 600; }
+  .dir-row .dir-val.down { color: #e87a7a; font-weight: 600; }
+  .dir-group-title {
+    font-size: 12px; color: #7a8a9a; margin: 12px 0 4px;
+    border-left: 2px solid #2a6df4; padding-left: 6px;
+  }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   body {
     margin: 0; padding: 16px;
@@ -469,6 +507,7 @@ var _hmt = _hmt || [];
   <div class="tab active" data-panel="byHero">按英雄查</div>
   <div class="tab" data-panel="byStat">按词条反查</div>
   <div class="tab" data-panel="myBag">配置和对比</div>
+  <div class="tab" data-panel="training">英雄培养</div>
   <div class="tab" data-panel="team">阵容玩法</div>
   <div class="tab" data-panel="backup">备份</div>
 </div>
@@ -502,7 +541,15 @@ var _hmt = _hmt || [];
   </div>
   <div id="bagResult"></div>
 </div>
-
+<div class="panel" id="training">
+  <div class="form-block" style="padding:10px 12px">
+    <div class="field" style="margin-bottom:0">
+      <label>选择英雄</label>
+      <select id="trainingHeroSelect"></select>
+    </div>
+  </div>
+  <div id="trainingResult"></div>
+</div>
 <div class="panel" id="team">
   <div class="form-block">
     <h3>玩法模式</h3>
@@ -581,7 +628,66 @@ const STAT_THRESHOLDS = {
   "暴击抵抗": { cap: 50,  warn: 30, note: "每点降 1% 受到的暴击伤害，最多把暴击伤害降到 150%" },
   "伤害减免": { cap: 75,  warn: 50, note: "最多降为原伤害的 25%（即 75% 减伤上限）" }
 };
+/* 培养方向预设：最终系数 = 场景系数 × 方向系数 */
+const DIRECTION_PRESETS = {
+  "均衡": {},
+  "物理输出流": { "攻击": 1.4, "护甲穿透": 1.3, "暴击": 1.3, "暴击伤害": 1.3, "攻击速度": 1.2, "生命": 0.8, "伤害减免": 0.8 },
+  "能量输出流": { "技能强度": 1.4, "抗性穿透": 1.3, "暴击": 1.3, "攻击速度": 1.1, "生命": 0.8, "伤害减免": 0.8 },
+  "混伤流": { "攻击": 1.3, "技能强度": 1.3, "暴击": 1.2, "护甲穿透": 1.1, "抗性穿透": 1.1, "生命": 0.85 },
+  "暴击爆发流": { "暴击": 1.5, "暴击伤害": 1.5, "攻击": 1.2, "攻击速度": 1.1, "生命": 0.7, "伤害减免": 0.7 },
+  "持续输出流": { "攻击": 1.3, "攻击速度": 1.4, "生命回收": 1.2, "暴击": 1.1, "生命": 0.85 },
+  "技能循环流": { "技能强度": 1.3, "冷却缩减": 1.4, "初始能量": 1.3, "生命": 0.9, "伤害减免": 0.9 },
+  "穿透流": { "护甲穿透": 1.5, "抗性穿透": 1.5, "攻击": 1.2, "技能强度": 1.2, "生命": 0.85 },
+  "坦克流": { "生命": 1.4, "伤害减免": 1.4, "护甲": 1.3, "抗性": 1.3, "暴击抵抗": 1.2, "攻击": 0.7, "技能强度": 0.7 },
+  "纯肉承伤流": { "生命": 1.5, "伤害减免": 1.5, "护甲": 1.4, "抗性": 1.4, "攻击": 0.6, "暴击": 0.6, "技能强度": 0.6 },
+  "闪避流": { "闪避": 1.5, "暴击抵抗": 1.3, "生命": 1.2, "伤害减免": 1.2, "暴击": 0.7 },
+  "反伤流": { "生命": 1.4, "伤害减免": 1.3, "抗性": 1.3, "生命回收": 1.3, "攻击": 0.8 },
+  "续航流": { "生命恢复": 1.5, "生命回收": 1.4, "生命": 1.3, "伤害减免": 1.2, "攻击": 0.8 },
+  "控制流": { "控制抗性": 1.4, "冷却缩减": 1.3, "技能强度": 1.3, "生命": 1.1, "攻击": 0.8 },
+  "辅助流": { "技能强度": 1.4, "冷却缩减": 1.3, "生命": 1.2, "伤害减免": 1.2, "攻击": 0.6, "暴击": 0.7 },
+  "治疗流": { "技能强度": 1.4, "生命": 1.3, "冷却缩减": 1.2, "伤害减免": 1.2, "攻击": 0.5 },
+  "召唤流": { "技能强度": 1.4, "生命": 1.2, "护甲": 1.2, "抗性": 1.2, "攻击": 0.8 },
+  "PVP特化": { "暴击抵抗": 1.5, "控制抗性": 1.5, "生命": 1.3, "伤害减免": 1.3, "闪避": 1.2, "暴击": 0.8, "攻击速度": 0.9 },
+  "BOSS特化": { "攻击": 1.3, "攻击速度": 1.3, "生命回收": 1.4, "暴击": 1.2, "护甲穿透": 1.2, "抗性穿透": 1.2, "闪避": 0.8 },
+  "推图速刷": { "攻击": 1.3, "技能强度": 1.3, "攻击速度": 1.2, "暴击": 1.1, "生命": 0.85 },
+  "极限单点": { "攻击": 1.4, "暴击": 1.4, "暴击伤害": 1.4, "护甲穿透": 1.2, "生命": 0.7, "伤害减免": 0.7 },
+  "极限群伤": { "技能强度": 1.4, "抗性穿透": 1.3, "暴击": 1.2, "攻击": 1.1, "生命": 0.8 }
+};
 
+const DIRECTION_STORAGE_KEY = 'crazysw_directions_v1';
+
+function loadDirections() {
+  try {
+    const raw = localStorage.getItem(DIRECTION_STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch(e) {}
+  return {};
+}
+
+function saveDirections() {
+  localStorage.setItem(DIRECTION_STORAGE_KEY, JSON.stringify(heroDirections));
+}
+
+let heroDirections = loadDirections();
+
+function getHeroDirection(heroName) {
+  if (!heroDirections[heroName]) {
+    heroDirections[heroName] = { preset: '均衡', custom: {} };
+  }
+  return heroDirections[heroName];
+}
+
+function getDirectionMultiplier(heroName, statName) {
+  const dir = heroDirections[heroName];
+  if (!dir) return 1.0;
+  if (dir.custom && dir.custom[statName] !== undefined) return dir.custom[statName];
+  const preset = DIRECTION_PRESETS[dir.preset] || {};
+  return preset[statName] || 1.0;
+}
+
+function getDirectionValue(heroName, statName) {
+  return getDirectionMultiplier(heroName, statName);
+}
 const SCENARIOS = {
   "通用": {},
   "PVP竞技场": {
@@ -1043,6 +1149,7 @@ function scoreStats(heroName, stats, quality, part, itemType) {
       let s = statBase(idx) * (v / 100) * quality * partPenalty;
       s *= statTypeMultiplier(h, name);
       s *= getScenarioMultiplier(name);
+      s *= getDirectionMultiplier(heroName, name);
       score += s;
     }
   });
@@ -1577,7 +1684,145 @@ function statTier(heroName, statName) {
   if (best >= 3 && best < 99) return { cls: 't3', label: 'T3 过渡', desc: '在推荐列表里，但排名靠后' };
   return { cls: 'tn', label: '不推荐', desc: '不在该英雄推荐列表里' };
 }
+/* ============ 英雄培养页 ============ */
 
+function renderTraining(heroName) {
+  const box = document.getElementById('trainingResult');
+  if (!box) return;
+  const h = HEROES[heroName];
+  if (!h) { box.innerHTML = ''; return; }
+
+  const dir = getHeroDirection(heroName);
+  const presetNames = Object.keys(DIRECTION_PRESETS);
+
+  let html = `<div class="card"><h2>${heroName} · 培养方向
+    <span class="role-tag">${h.role}</span>
+    <span class="role-tag dmg">${h.damageType}伤害</span>
+    <span class="role-tag out">${h.outputType}输出</span>
+  </h2>
+  <div class="tip info">最终系数 = 场景系数 × 方向系数。方向系数是你自定义的培养倾向，会影响「配置和对比」页里的槽位评分、候选池推荐、资源规划排序。<br>
+  ⚠️ 预设方向的系数为本分析器自定，非官方机制，仅用于体现培养倾向。</div>
+
+  <div class="label" style="margin-top:12px">培养方向预设（选一个，会自动填充下面的滑块）</div>
+  <div class="training-preset-row">`;
+
+  presetNames.forEach(p => {
+    const isOn = dir.preset === p && Object.keys(dir.custom).length === 0;
+    html += `<div class="training-preset ${isOn ? 'on' : ''}" onclick="selectTrainingPreset('${heroName}','${p}')">${p}</div>`;
+  });
+
+  html += `</div>`;
+
+  /* 滑块 */
+  const allStats = Object.keys(STAT_DEFS);
+  const outputStats = allStats.filter(s => ['攻击','技能强度','攻击速度','伤害增加','护甲穿透','抗性穿透','暴击','暴击伤害','命中','初始能量','生命回收'].includes(s));
+  const surviveStats = allStats.filter(s => ['生命','伤害减免','护甲','抗性','暴击抵抗','闪避','生命恢复','控制抗性'].includes(s));
+  const funcStats = allStats.filter(s => ['冷却缩减'].includes(s));
+
+  const renderSliderGroup = (title, stats) => {
+    let s = `<div class="dir-group-title">${title}</div>`;
+    stats.forEach(stat => {
+      const v = getDirectionValue(heroName, stat);
+      const cls = v > 1.001 ? 'up' : (v < 0.999 ? 'down' : '');
+      s += `<div class="dir-row">
+        <span class="dir-name">${stat}</span>
+        <input type="range" min="0.5" max="1.5" step="0.05" value="${v}"
+               oninput="onDirectionSlider('${heroName}','${stat}',this.value)"
+               onchange="onDirectionSliderCommit('${heroName}')">
+        <span class="dir-val ${cls}" id="dirval_${stat}">×${v.toFixed(2)}</span>
+      </div>`;
+    });
+    return s;
+  };
+
+  html += renderSliderGroup('输出类', outputStats);
+  html += renderSliderGroup('生存类', surviveStats);
+  if (funcStats.length) html += renderSliderGroup('功能类', funcStats);
+
+  /* 预览：本方向下的英雄优先级 */
+  const badgeAdjusted = [...h.badge].sort((a,b) => getDirectionMultiplier(heroName, b) - getDirectionMultiplier(heroName, a));
+  const gearAdjusted = [...h.gear].sort((a,b) => getDirectionMultiplier(heroName, b) - getDirectionMultiplier(heroName, a));
+
+  html += `<div class="row" style="margin-top:16px">
+    <div class="label">本方向下的徽章优先级</div>
+    <div class="vals">`;
+  badgeAdjusted.forEach((v,i) => {
+    const c = getDirectionMultiplier(heroName, v);
+    const cls = c > 1.05 ? 'first' : (c < 0.95 ? 'last' : '');
+    html += `<span class="val ${cls}">${i+1}. ${v}${c !== 1 ? ` ×${c.toFixed(2)}` : ''}</span>`;
+  });
+  html += `</div></div>
+
+  <div class="row">
+    <div class="label">本方向下的装备优先级</div>
+    <div class="vals">`;
+  gearAdjusted.forEach((v,i) => {
+    const c = getDirectionMultiplier(heroName, v);
+    const cls = c > 1.05 ? 'first' : (c < 0.95 ? 'last' : '');
+    html += `<span class="val ${cls}">${i+1}. ${v}${c !== 1 ? ` ×${c.toFixed(2)}` : ''}</span>`;
+  });
+  html += `</div></div>
+
+  <div class="row">
+    <div class="label">按钮</div>
+    <div class="vals">
+      <span class="val" style="cursor:pointer" onclick="resetDirection('${heroName}')">重置为均衡</span>
+      <span class="val" style="cursor:pointer" onclick="selectTrainingPreset('${heroName}','${dir.preset}')">重新应用当前预设</span>
+    </div>
+  </div>
+
+  <div class="tip">技能模块待更新。后续会加上：技能优先级、主升哪个技能、升级消耗。</div>
+
+  </div>`;
+
+  box.innerHTML = html;
+}
+
+function selectTrainingPreset(heroName, presetName) {
+  const dir = getHeroDirection(heroName);
+  dir.preset = presetName;
+  dir.custom = {};
+  saveDirections();
+  renderTraining(heroName);
+  /* 联动刷新其他页 */
+  if (heroSelectEl && heroSelectEl.value === heroName) renderHero(heroName);
+  if (activeBagHero === heroName) renderBag(heroName);
+}
+
+function onDirectionSlider(heroName, statName, value) {
+  /* 实时更新数字显示，不重渲染 */
+  const el = document.getElementById('dirval_' + statName);
+  if (el) {
+    const v = parseFloat(value);
+    el.textContent = '×' + v.toFixed(2);
+    el.className = 'dir-val ' + (v > 1.001 ? 'up' : (v < 0.999 ? 'down' : ''));
+  }
+}
+
+function onDirectionSliderCommit(heroName) {
+  /* 用户松手后：读取所有滑块，写入 custom，重渲染所有联动页 */
+  const dir = getHeroDirection(heroName);
+  dir.custom = {};
+  document.querySelectorAll('#trainingResult input[type=range]').forEach(inp => {
+    const row = inp.closest('.dir-row');
+    if (!row) return;
+    const name = row.querySelector('.dir-name').textContent;
+    const v = parseFloat(inp.value);
+    if (v !== 1) dir.custom[name] = v;
+  });
+  saveDirections();
+  renderTraining(heroName);
+  if (heroSelectEl && heroSelectEl.value === heroName) renderHero(heroName);
+  if (activeBagHero === heroName) renderBag(heroName);
+}
+
+function resetDirection(heroName) {
+  heroDirections[heroName] = { preset: '均衡', custom: {} };
+  saveDirections();
+  renderTraining(heroName);
+  if (heroSelectEl && heroSelectEl.value === heroName) renderHero(heroName);
+  if (activeBagHero === heroName) renderBag(heroName);
+}
 function renderStat(stat) {
   const s = STATS[stat];
   const scnCoef = getScenarioMultiplier(stat);
@@ -3240,6 +3485,21 @@ document.querySelectorAll('.tab').forEach(t => {
 });
 
 /* ============ 启动初始化 ============ */
+
+/* 英雄培养页下拉初始化 */
+const trainingHeroSelectEl = document.getElementById('trainingHeroSelect');
+if (trainingHeroSelectEl) {
+  Object.keys(HEROES).forEach(name => {
+    const o = document.createElement('option');
+    o.value = name; o.textContent = name;
+    trainingHeroSelectEl.appendChild(o);
+  });
+  trainingHeroSelectEl.onchange = () => {
+    renderTraining(trainingHeroSelectEl.value);
+  };
+  trainingHeroSelectEl.value = Object.keys(HEROES)[0];
+  renderTraining(trainingHeroSelectEl.value);
+}
 
 renderHero(heroSelectEl.value);
 renderStat(statSelectEl.value);
