@@ -16,12 +16,42 @@
   .sub { font-size: 12px; color: #7a8a9a; margin-bottom: 16px; }
 
   .scenario-bar {
-    display: flex; align-items: center; gap: 8px;
     background: #161f29; border: 1px solid #24313d; border-radius: 12px;
     padding: 10px 12px; margin-bottom: 12px;
   }
+  .scenario-bar .row1 { display: flex; align-items: center; gap: 8px; }
   .scenario-bar label { font-size: 12px; color: #7a8a9a; white-space: nowrap; }
   .scenario-bar select { flex: 1; }
+  .scenario-toggle {
+    font-size: 12px; color: #9ac8e8; cursor: pointer; user-select: none;
+    margin-top: 8px; display: inline-block;
+  }
+  .scenario-toggle:hover { text-decoration: underline; }
+  .scenario-info {
+    display: none; margin-top: 10px; padding: 10px 12px;
+    background: #0f1720; border: 1px solid #2a3a48; border-radius: 8px;
+    font-size: 12px; line-height: 1.7; color: #b8c8d8;
+  }
+  .scenario-info.open { display: block; }
+  .scenario-info h4 {
+    margin: 0 0 8px; font-size: 13px; color: #7ee2a8;
+    border-bottom: 1px solid #2a3a48; padding-bottom: 6px;
+  }
+  .scenario-info .note {
+    color: #e2d47e; font-size: 12px; margin-top: 8px;
+    padding-top: 8px; border-top: 1px dashed #2a3a48;
+  }
+  .scenario-info table {
+    width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 6px;
+  }
+  .scenario-info th, .scenario-info td {
+    text-align: left; padding: 6px 8px; border-bottom: 1px solid #1e2a36;
+    vertical-align: top;
+  }
+  .scenario-info th { color: #9ac8e8; font-weight: 600; white-space: nowrap; }
+  .scenario-info .up { color: #7ee2a8; }
+  .scenario-info .down { color: #e87a7a; }
+  .scenario-info .none { color: #7a8a9a; }
 
   .tabs { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
   .tab {
@@ -45,6 +75,7 @@
   }
   .role-tag.dmg { background: #2a1a3a; color: #d8a8f0; }
   .role-tag.out { background: #1a2a3a; color: #9ac8e8; }
+  .role-tag.scn { background: #2a4a6a; color: #9ac8e8; }
 
   .row { margin-bottom: 12px; }
   .row:last-child { margin-bottom: 0; }
@@ -57,6 +88,13 @@
   .val.first { background: #1f3a2a; border-color: #2f6a45; color: #7ee2a8; font-weight: 600; }
   .val.second { background: #2a2a1f; border-color: #5a5a2f; color: #e2d47e; }
   .val.last { background: #1a2530; border-color: #2a3a48; color: #9ab; font-size: 12px; }
+
+  .coef {
+    display: inline-block; font-size: 11px; padding: 1px 6px;
+    border-radius: 5px; margin-left: 4px; font-weight: 600;
+  }
+  .coef.up { background: #1f3a2a; color: #7ee2a8; border: 1px solid #2f6a45; }
+  .coef.down { background: #2a1a1a; color: #f0a8a8; border: 1px solid #6a2a2a; }
 
   .tip {
     font-size: 13px; line-height: 1.6; color: #b8c8d8;
@@ -366,15 +404,56 @@
 <div class="sub">场景化评分 · 候选池对比 · 资源规划</div>
 
 <div class="scenario-bar">
-  <label>场景：</label>
-  <select id="scenarioSelect" onchange="onScenarioChange()">
-    <option value="通用">通用（默认）</option>
-    <option value="PVP竞技场">PVP 竞技场</option>
-    <option value="世界BOSS">世界 BOSS / 深渊</option>
-    <option value="深渊爬塔">深渊爬塔</option>
-    <option value="海域探索">海域探索</option>
-    <option value="主线推图">主线推图</option>
-  </select>
+  <div class="row1">
+    <label>场景：</label>
+    <select id="scenarioSelect" onchange="onScenarioChange()">
+      <option value="通用">通用（默认）</option>
+      <option value="PVP竞技场">PVP 竞技场</option>
+      <option value="世界BOSS">世界 BOSS / 深渊</option>
+      <option value="深渊爬塔">深渊爬塔</option>
+      <option value="海域探索">海域探索</option>
+      <option value="主线推图">主线推图</option>
+    </select>
+  </div>
+  <span class="scenario-toggle" onclick="toggleScenarioInfo()">场景说明 ⓘ</span>
+  <div class="scenario-info" id="scenarioInfo">
+    <h4>不同场景下的词条权重调整</h4>
+    <p style="margin:0 0 8px">场景切换后，<b>按英雄查</b>、<b>按词条反查</b>、<b>配置和对比</b>三处均按当前场景系数重新计算，用于体现同一套配置在不同玩法下的收益差异。</p>
+    <table>
+      <tr><th>场景</th><th>加强</th><th>削弱</th></tr>
+      <tr>
+        <td>通用</td>
+        <td class="none">—</td>
+        <td class="none">—</td>
+      </tr>
+      <tr>
+        <td>PVP竞技场</td>
+        <td class="up">暴击抵抗、控制抗性、生命、伤害减免、闪避</td>
+        <td class="down">暴击、攻击速度</td>
+      </tr>
+      <tr>
+        <td>世界BOSS</td>
+        <td class="up">生命回收、攻击、暴击、暴击伤害、攻击速度、护甲穿透、抗性穿透</td>
+        <td class="down">闪避、暴击抵抗、控制抗性</td>
+      </tr>
+      <tr>
+        <td>深渊爬塔</td>
+        <td class="up">生命、伤害减免、护甲、抗性、生命恢复、暴击抵抗、闪避</td>
+        <td class="down">攻击速度</td>
+      </tr>
+      <tr>
+        <td>海域探索</td>
+        <td class="up">攻击、技能强度、暴击、命中</td>
+        <td class="none">—</td>
+      </tr>
+      <tr>
+        <td>主线推图</td>
+        <td class="up">攻击、技能强度</td>
+        <td class="none">—</td>
+      </tr>
+    </table>
+    <div class="note">⚠️ 以上场景系数为本分析器根据玩法特征自定，<b>非官方机制</b>，用于辅助判断不同玩法下的词条倾向，仅供参考。</div>
+  </div>
 </div>
 
 <div class="tabs">
@@ -436,7 +515,7 @@
     <div id="presetResult"></div>
   </div>
 
-    <div id="freeMode" style="display:none">
+  <div id="freeMode" style="display:none">
     <div class="form-block">
       <h3>选择英雄（最多 5 个）</h3>
       <div class="field" style="margin-bottom:8px">
@@ -541,15 +620,30 @@ const SCENARIOS = {
 
 let currentScenario = "通用";
 
+function toggleScenarioInfo() {
+  const el = document.getElementById('scenarioInfo');
+  if (el) el.classList.toggle('open');
+}
+
 function onScenarioChange() {
   const sel = document.getElementById('scenarioSelect');
   currentScenario = sel.value;
+  /* 刷新所有联动区域 */
+  if (heroSelectEl && heroSelectEl.value) renderHero(heroSelectEl.value);
+  if (statSelectEl && statSelectEl.value) renderStat(statSelectEl.value);
   if (activeBagHero) renderBag(activeBagHero);
 }
 
 function getScenarioMultiplier(statName) {
   const s = SCENARIOS[currentScenario] || {};
   return s[statName] || 1.0;
+}
+
+function scenarioCoefTag(statName) {
+  const c = getScenarioMultiplier(statName);
+  if (Math.abs(c - 1) < 0.001) return '';
+  const cls = c > 1 ? 'up' : 'down';
+  return ` <span class="coef ${cls}">×${c.toFixed(2)}</span>`;
 }
 
 const GEAR_FIXED_FIELDS = {
@@ -901,9 +995,7 @@ const STATS = {
   "生命恢复":   { top: ["不死州长", "终结者"],       second: ["大嘴山姆", "机器屠夫"], reason: "每 3 秒回一定比例最大生命，长站场收益高。" },
   "控制抗性":   { top: ["机器屠夫", "巫师老侃", "米娅"], second: ["不死州长", "大嘴山姆"], reason: "减少被控时间。" },
   "冷却缩减":   { top: ["巫师老侃", "蜜雪儿", "米娅", "神父欧玛", "无念铁僧"], second: ["鬼火杰森", "雷教授"],   reason: "技能循环更快（辅助/法师核心）。" }
-};
-
-function statBase(index) {
+};function statBase(index) {
   if (index === 0) return 10;
   if (index === 1) return 7;
   if (index === 2) return 4;
@@ -1183,7 +1275,6 @@ if (heroSelectEl) {
     if (heroSelectEl.value) renderHero(heroSelectEl.value);
   };
   heroSelectEl.value = Object.keys(HEROES)[0];
-  renderHero(heroSelectEl.value);
 }
 
 const statSelectEl = document.getElementById('statSelect');
@@ -1197,7 +1288,6 @@ if (statSelectEl) {
     if (statSelectEl.value) renderStat(statSelectEl.value);
   };
   statSelectEl.value = Object.keys(STATS)[0];
-  renderStat(statSelectEl.value);
 }
 
 const bagHeroSelectEl = document.getElementById('bagHeroSelect');
@@ -1209,6 +1299,7 @@ if (bagHeroSelectEl) {
   });
   bagHeroSelectEl.onchange = () => {
     editingSlot = { hero: null, type: null, slot: null };
+    isAddingSlot = { hero: null, type: null, slot: null };
     justReplaced = null;
     activeBagHero = bagHeroSelectEl.value;
     renderBag(bagHeroSelectEl.value);
@@ -1381,10 +1472,42 @@ function statsLine(stats) {
   return stats.map(s => `<span>${statLabel(s)}</span>`).join('');
 }
 
+/* ============ 按英雄查（场景联动） ============ */
+
 function renderHero(name) {
   const h = HEROES[name];
   const w = h.baseWeight;
-  const scenarioTag = currentScenario !== '通用' ? `<span class="role-tag" style="background:#2a4a6a;color:#9ac8e8">场景：${currentScenario}</span>` : '';
+  const scenarioTag = currentScenario !== '通用' ? `<span class="role-tag scn">场景：${currentScenario}</span>` : '';
+
+  /* 原版优先级（英雄定位） */
+  const badgeListHtml = h.badge.map((v,i) => {
+    const cls = i===0?'first':i===1?'second':(i<=2?'':(i>=3?'last':''));
+    return `<span class="val ${cls}">${i+1}. ${v}${scenarioCoefTag(v)}</span>`;
+  }).join('');
+
+  const gearListHtml = h.gear.map((v,i) => {
+    const cls = i===0?'first':i===1?'second':(i<=2?'':(i>=3?'last':''));
+    return `<span class="val ${cls}">${i+1}. ${v}${scenarioCoefTag(v)}</span>`;
+  }).join('');
+
+  /* 本场景调整版：按系数重排 */
+  const badgeAdjusted = [...h.badge].sort((a,b) => getScenarioMultiplier(b) - getScenarioMultiplier(a));
+  const gearAdjusted = [...h.gear].sort((a,b) => getScenarioMultiplier(b) - getScenarioMultiplier(a));
+
+  const badgeAdjustHtml = badgeAdjusted.map((v,i) => {
+    const c = getScenarioMultiplier(v);
+    const cls = c > 1.05 ? 'first' : (c < 0.95 ? 'last' : '');
+    return `<span class="val ${cls}">${i+1}. ${v}${scenarioCoefTag(v)}</span>`;
+  }).join('');
+
+  const gearAdjustHtml = gearAdjusted.map((v,i) => {
+    const c = getScenarioMultiplier(v);
+    const cls = c > 1.05 ? 'first' : (c < 0.95 ? 'last' : '');
+    return `<span class="val ${cls}">${i+1}. ${v}${scenarioCoefTag(v)}</span>`;
+  }).join('');
+
+  const hasScenarioAdjust = currentScenario !== '通用';
+
   const html = `<div class="card">
     <h2>${name}
       <span class="role-tag">${h.role}</span>
@@ -1392,20 +1515,26 @@ function renderHero(name) {
       <span class="role-tag out">${h.outputType}输出</span>
       ${scenarioTag}
     </h2>
+
     <div class="row">
-      <div class="label">徽章优先级（前 3 为核心，其后为过渡/备选）</div>
-      <div class="vals">${h.badge.map((v,i) => {
-        const cls = i===0?'first':i===1?'second':(i<=2?'':(i>=3?'last':''));
-        return `<span class="val ${cls}">${i+1}. ${v}</span>`;
-      }).join('')}</div>
+      <div class="label">徽章优先级（英雄定位）</div>
+      <div class="vals">${badgeListHtml}</div>
     </div>
     <div class="row">
-      <div class="label">装备 / 词条优先级</div>
-      <div class="vals">${h.gear.map((v,i) => {
-        const cls = i===0?'first':i===1?'second':(i<=2?'':(i>=3?'last':''));
-        return `<span class="val ${cls}">${i+1}. ${v}</span>`;
-      }).join('')}</div>
+      <div class="label">装备 / 词条优先级（英雄定位）</div>
+      <div class="vals">${gearListHtml}</div>
     </div>
+
+    ${hasScenarioAdjust ? `
+    <div class="row" style="margin-top:14px">
+      <div class="label">本场景调整版（按场景系数重排）</div>
+      <div class="vals">${badgeAdjustHtml}</div>
+      <div class="vals" style="margin-top:6px">${gearAdjustHtml}</div>
+      <div class="tip info" style="margin-top:8px">
+        本场景下：绿色为被加强的词条，灰色为被削弱的词条。系数为该分析器自定，非官方机制。
+      </div>
+    </div>` : ''}
+
     <div class="row">
       <div class="label">适配部位</div>
       <div class="vals">${h.parts.map(p => `<span class="val">${p}</span>`).join('')}</div>
@@ -1422,6 +1551,8 @@ function renderHero(name) {
   </div>`;
   heroResultEl.innerHTML = html;
 }
+
+/* ============ 按词条反查（场景联动） ============ */
 
 function statTier(heroName, statName) {
   const h = HEROES[heroName];
@@ -1440,8 +1571,11 @@ function statTier(heroName, statName) {
 
 function renderStat(stat) {
   const s = STATS[stat];
+  const scnCoef = getScenarioMultiplier(stat);
+  const scenarioTag = currentScenario !== '通用' ? `<span class="role-tag scn">场景：${currentScenario}</span>` : '';
+
   let html = `<div class="card">
-    <h2>「${stat}」给谁最合适</h2>`;
+    <h2>「${stat}」给谁最合适 ${scenarioTag}</h2>`;
 
   if (STAT_DEFS[stat]) {
     html += `<div class="stat-def-box"><b>官方说明：</b>${STAT_DEFS[stat]}</div>`;
@@ -1452,6 +1586,16 @@ function renderStat(stat) {
   if (STAT_THRESHOLDS[stat]) {
     const t = STAT_THRESHOLDS[stat];
     html += `<div class="tip info">📊 阈值：${t.note}。装备+徽章累计达到 ${t.cap}% 就是上限，达到 ${t.warn}% 左右就要注意边际收益。</div>`;
+  }
+
+  if (currentScenario !== '通用') {
+    if (scnCoef > 1.001) {
+      html += `<div class="tip suggest">✅ 本场景（${currentScenario}）对该词条 <b>加强 ×${scnCoef.toFixed(2)}</b>，收益高于通用场景。</div>`;
+    } else if (scnCoef < 0.999) {
+      html += `<div class="tip warn">⚠️ 本场景（${currentScenario}）对该词条 <b>削弱 ×${scnCoef.toFixed(2)}</b>，收益低于通用场景。</div>`;
+    } else {
+      html += `<div class="tip info">本场景未对该词条做额外调整，与通用一致。</div>`;
+    }
   }
 
   html += `<div class="rank">首选英雄 + 收益档位</div>`;
@@ -1505,7 +1649,7 @@ function renderBag(name) {
   const badgeCount = Object.keys(data.badges).length;
   const gearCount = Object.keys(data.gears).length;
 
-  const scenarioTag = currentScenario !== '通用' ? `<span class="role-tag" style="background:#2a4a6a;color:#9ac8e8">场景：${currentScenario}</span>` : '';
+  const scenarioTag = currentScenario !== '通用' ? `<span class="role-tag scn">场景：${currentScenario}</span>` : '';
 
   let html = `<div class="card"><h2>${name}
     <span class="role-tag">${h.role}</span>
@@ -1722,7 +1866,6 @@ function closeAddSlot(name, type, slotKey) {
 
 function renderResourcePlan(name) {
   const data = getHeroData(name);
-  const h = HEROES[name];
 
   const heroCandidates = CANDIDATES.filter(c => c.hero === name);
   if (heroCandidates.length === 0) {
@@ -1756,12 +1899,7 @@ function renderResourcePlan(name) {
     }
 
     if (bestSlot) {
-      planItems.push({
-        cand: cand,
-        slot: bestSlot,
-        gain: bestGap,
-        isGear: isGear
-      });
+      planItems.push({ cand: cand, slot: bestSlot, gain: bestGap, isGear: isGear });
     }
   });
 
@@ -1834,7 +1972,7 @@ function renderResourcePlan(name) {
 /* ============ 候选池 ============ */
 
 function renderCandidatePool(name) {
-  let html = `<div class="form-block" style="margin-top:12px">
+  return `<div class="form-block" style="margin-top:12px">
     <h3>新物品候选池</h3>
     <div class="field">
       <button class="btn ghost small" onclick="openCandidatePanel('${name}')">+ 录入新物品</button>
@@ -1843,7 +1981,6 @@ function renderCandidatePool(name) {
     <div id="candidatePanelWrap"></div>
     <div id="candidateListWrap"></div>
   </div>`;
-  return html;
 }
 
 function renderCandidatePoolInteractive(name) {
@@ -2123,18 +2260,9 @@ function applyCandidate(hero, id, slotKey) {
   const data = getHeroData(hero);
 
   if (isGear) {
-    data.gears[slotKey] = {
-      part: cand.part,
-      quality: cand.quality,
-      stats: cand.stats,
-      base: cand.base
-    };
+    data.gears[slotKey] = { part: cand.part, quality: cand.quality, stats: cand.stats, base: cand.base };
   } else {
-    data.badges[slotKey] = {
-      quality: cand.quality,
-      stats: cand.stats,
-      base: cand.base
-    };
+    data.badges[slotKey] = { quality: cand.quality, stats: cand.stats, base: cand.base };
   }
   saveConfig(CONFIG);
 
@@ -2840,6 +2968,7 @@ const PRESET_TEAMS = {
   sel.onchange = renderPresetResult;
 })();
 
+/* 自由选择英雄：下拉 + 已选 chips */
 function initFreeHeroSelect() {
   const sel = document.getElementById('freeHeroSelect');
   if (!sel) return;
@@ -3039,8 +3168,6 @@ document.getElementById('teamMode').onchange = function() {
   }
 };
 
-renderPresetResult();
-
 /* ============ 导出/导入 ============ */
 
 function doExport() {
@@ -3103,14 +3230,14 @@ document.querySelectorAll('.tab').forEach(t => {
   };
 });
 
-if (activeBagHero) {
-  renderBag(activeBagHero);
-}
+/* ============ 启动初始化 ============ */
 
+renderHero(heroSelectEl.value);
+renderStat(statSelectEl.value);
+renderBag(activeBagHero);
+renderPresetResult();
 initFreeHeroSelect();
 renderFreeSelectedChips();
-
-initFreeHeroChips();
 </script>
 </body>
 </html>
