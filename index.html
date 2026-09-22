@@ -472,6 +472,44 @@
   }
   .sim-tag.legend { background: #2a2a1f; color: #e2d47e; border: 1px solid #5a5a2f; }
   .sim-tag.transcend { background: #2a1a3a; color: #d8a8f0; border: 1px solid #5a3a8a; }
+   /* 礼包码 */
+  .gift-card {
+    background: #1e2a36; border: 1px solid #2a3a48; border-radius: 10px;
+    padding: 12px 14px; margin-bottom: 10px;
+  }
+  .gift-card .gift-head {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    gap: 8px; flex-wrap: wrap; margin-bottom: 6px;
+  }
+  .gift-card .gift-code {
+    font-family: monospace; font-size: 15px; font-weight: 700;
+    color: #7ee2a8; letter-spacing: 1px;
+    background: #0f1720; padding: 4px 10px; border-radius: 6px;
+    border: 1px solid #2f6a45;
+  }
+  .gift-card .gift-date {
+    font-size: 11px; color: #7a8a9a;
+  }
+  .gift-card .gift-reward {
+    font-size: 13px; color: #b8c8d8; line-height: 1.6; margin-top: 4px;
+  }
+  .gift-card .gift-actions {
+    display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap;
+  }
+  .gift-card .gift-btn {
+    font-size: 12px; padding: 5px 12px; border-radius: 6px;
+    background: #2a6df4; border: none; color: #fff;
+    cursor: pointer; user-select: none;
+  }
+  .gift-card .gift-btn:active { background: #1a5ad4; }
+  .gift-card .gift-tag {
+    font-size: 11px; padding: 2px 7px; border-radius: 6px;
+    background: #2a4a6a; color: #9ac8e8; margin-left: 6px;
+  }
+  .gift-section-title {
+    font-size: 13px; color: #9ac8e8; font-weight: 600;
+    margin: 16px 0 8px; border-left: 3px solid #2a6df4; padding-left: 8px;
+  }
    /* 英雄攻略 */
   .guide-card {
     background: #1e2a36; border: 1px solid #2a3a48; border-radius: 10px;
@@ -572,11 +610,12 @@ var _hmt = _hmt || [];
 <div class="tabs">
   <div class="tab active" data-panel="byHero">按英雄查</div>
   <div class="tab" data-panel="byStat">按词条反查</div>
-  <div class="tab" data-panel="myBag">配置和对比</div>
+  <div class="tab" data-panel="myBag">配置对比</div>
   <div class="tab" data-panel="training">英雄培养</div>
   <div class="tab" data-panel="guide">英雄攻略</div>
   <div class="tab" data-panel="team">阵容玩法</div>
   <div class="tab" data-panel="simulator">模拟中心</div>
+  <div class="tab" data-panel="gift">礼包中心</div>
   <div class="tab" data-panel="backup">备份</div>
 </div>
 
@@ -712,6 +751,20 @@ var _hmt = _hmt || [];
   </div>
 </div>
 
+<div class="panel" id="gift">
+  <div class="form-block">
+    <h3>礼包码</h3>
+    <div class="tip info">
+      以下礼包码来自玩家社区整理，可能存在过期或失效的情况。兑换方式：游戏内点击左上角头像 → 个人信息页 → 礼包码入口 → 输入兑换码。
+      <br>⚠️ 本模块数据为人工整理，非官方实时同步。遇到失效请忽略。
+    </div>
+    <div class="field" style="margin-top:10px">
+      <label>搜索礼包码（可选）</label>
+      <input type="text" id="giftSearch" placeholder="输入关键词筛选..." oninput="renderGiftList()">
+    </div>
+  </div>
+  <div id="giftResult"></div>
+</div>
 <div class="panel" id="backup">
   <div class="form-block">
     <h3>导出配置</h3>
@@ -2148,6 +2201,75 @@ function closeAddSlot(name, type, slotKey) {
 
  /* ============ 升星模拟 ============ */
 
+ /* ============ 礼包码渲染 ============ */
+
+function renderGiftList() {
+  const box = document.getElementById('giftResult');
+  if (!box) return;
+
+  const searchEl = document.getElementById('giftSearch');
+  const keyword = searchEl ? searchEl.value.trim().toLowerCase() : '';
+
+  let html = '';
+
+  GIFT_CODES.forEach(group => {
+    const matched = group.codes.filter(c => {
+      if (!keyword) return true;
+      return c.code.toLowerCase().indexOf(keyword) >= 0 ||
+             c.reward.toLowerCase().indexOf(keyword) >= 0;
+    });
+    if (matched.length === 0) return;
+
+    html += `<div class="gift-section-title">${group.group}（${matched.length}）</div>`;
+
+    matched.forEach(c => {
+      html += `<div class="gift-card">
+        <div class="gift-head">
+          <span class="gift-code">${c.code}</span>
+          ${c.date ? `<span class="gift-date">📅 ${c.date}</span>` : ''}
+        </div>
+        <div class="gift-reward">🎁 ${c.reward}</div>
+        <div class="gift-actions">
+          <button class="gift-btn" onclick="copyGiftCode('${c.code}')">复制礼包码</button>
+        </div>
+      </div>`;
+    });
+  });
+
+  if (!html) {
+    html = `<div class="tip warn">没有匹配的礼包码。换个关键词试试。</div>`;
+  }
+
+  box.innerHTML = html;
+}
+
+function copyGiftCode(code) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(code).then(() => {
+      alert('已复制：' + code);
+    }).catch(() => {
+      fallbackCopy(code);
+    });
+  } else {
+    fallbackCopy(code);
+  }
+}
+
+function fallbackCopy(code) {
+  const ta = document.createElement('textarea');
+  ta.value = code;
+  ta.style.position = 'fixed';
+  ta.style.left = '-9999px';
+  document.body.appendChild(ta);
+  ta.select();
+  try {
+    document.execCommand('copy');
+    alert('已复制：' + code);
+  } catch(e) {
+    alert('复制失败，请手动长按选择：' + code);
+  }
+  document.body.removeChild(ta);
+}
 function runStarSim() {
   const box = document.getElementById('simResult');
   if (!box) return;
@@ -3532,6 +3654,58 @@ const TRANSCEND_HEROES = [
   "北境大帝", "过江龙", "探案双子星",
   "自由斗士", "海底之王", "铁肘老大", "战神小布", "修女瑟琳娜"
 ];
+ /* ============================================================
+   礼包码数据
+   ============================================================ */
+
+const GIFT_CODES = [
+  {
+    group: "近期有效（2026年9月）",
+    codes: [
+      { code: "VXY2CKO2", reward: "藏品劵×2、原料自选包×8000、加速器×600", date: "2026-09-19" },
+      { code: "5JDWTSDJ", reward: "藏品劵×2、原料自选包×8000、加速器×600", date: "2026-09-19" },
+      { code: "SSJ8Z3X", reward: "稀有装备材料自选×40、强化石×2000、加速器×200", date: "2026-09-19" },
+      { code: "18SJJ53", reward: "稀有装备材料自选×40、强化石×2000、加速器×200", date: "2026-09-19" },
+      { code: "X5SSJ9", reward: "招募卡×2、原料自选包×4000、加速器×200", date: "2026-09-19" },
+      { code: "9SSJ2N", reward: "招募卡×2、原料自选包×4000、加速器×200", date: "2026-09-19" },
+      { code: "BSSJ4F", reward: "招募卡×2、原料自选包×4000、加速器×200", date: "2026-09-19" },
+      { code: "JUEUN777", reward: "珠珠专属新手好礼", date: "2026-09-03" }
+    ]
+  },
+  {
+    group: "长期通用码",
+    codes: [
+      { code: "VIP666", reward: "通用新手礼包", date: "" },
+      { code: "VIP777", reward: "通用新手礼包", date: "" },
+      { code: "VIP888", reward: "通用新手礼包", date: "" },
+      { code: "SVIP666", reward: "通用新手礼包", date: "" },
+      { code: "FKSSJ666", reward: "通用礼包", date: "" },
+      { code: "FKSSJ777", reward: "通用礼包", date: "" },
+      { code: "FKSSJ888", reward: "通用礼包", date: "" },
+      { code: "水世界666", reward: "通用礼包", date: "" },
+      { code: "水世界888", reward: "通用礼包", date: "" },
+      { code: "水世界上线礼", reward: "上线纪念礼包", date: "" }
+    ]
+  },
+  {
+    group: "TapTap 社区码",
+    codes: [
+      { code: "wydld666", reward: "TapTap 社区礼包", date: "" },
+      { code: "航海冲冲冲", reward: "TapTap 社区礼包", date: "" },
+      { code: "J6SSJ5", reward: "TapTap 社区礼包", date: "" },
+      { code: "配队有妙招", reward: "TapTap 社区礼包", date: "" },
+      { code: "益世界豪礼", reward: "TapTap 社区礼包", date: "" },
+      { code: "20wheli", reward: "TapTap 社区礼包", date: "" },
+      { code: "末日钓鱼爽", reward: "TapTap 社区礼包", date: "" },
+      { code: "海里捞黄金", reward: "TapTap 社区礼包", date: "" },
+      { code: "拾荒不慌张", reward: "TapTap 社区礼包", date: "" },
+      { code: "开箱拿好礼", reward: "TapTap 社区礼包", date: "" },
+      { code: "钓鱼不空军", reward: "TapTap 社区礼包", date: "" },
+      { code: "生存水上漂", reward: "TapTap 社区礼包", date: "" },
+      { code: "基地超有料", reward: "TapTap 社区礼包", date: "" }
+    ]
+  }
+];
 const HERO_GUIDES = {
   "雷教授": [
     {
@@ -4209,6 +4383,8 @@ if (simHeroSelectEl) {
     simHeroSelectEl.appendChild(o);
   });
 }
+/* 礼包码初始渲染 */
+renderGiftList();
 renderHero(heroSelectEl.value);
 renderStat(statSelectEl.value);
 renderBag(activeBagHero);
