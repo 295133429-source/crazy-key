@@ -444,6 +444,57 @@
   .dir-group-title {
     font-size: 12px; color: #7a8a9a; margin: 12px 0 4px;
     border-left: 2px solid #2a6df4; padding-left: 6px;
+  }  /* 英雄攻略 */
+  .guide-card {
+    background: #1e2a36; border: 1px solid #2a3a48; border-radius: 10px;
+    padding: 12px 14px; margin-bottom: 10px;
+  }
+  .guide-card .g-head {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    gap: 8px; flex-wrap: wrap; margin-bottom: 8px;
+  }
+  .guide-card .g-title {
+    font-size: 14px; font-weight: 600; color: #e8eef5; flex: 1; min-width: 200px;
+  }
+  .guide-card .g-meta {
+    font-size: 12px; color: #7a8a9a; display: flex; gap: 10px; flex-wrap: wrap;
+    margin-bottom: 6px;
+  }
+  .guide-card .g-meta .src { color: #9ac8e8; }
+  .guide-card .g-meta .date { color: #7a8a9a; }
+  .guide-card .g-summary {
+    font-size: 13px; line-height: 1.7; color: #b8c8d8;
+    padding: 8px 10px; background: #0f1720; border-radius: 6px;
+  }
+  .guide-card .g-detail {
+    display: none; margin-top: 10px; padding: 10px;
+    background: #0f1720; border-radius: 6px;
+    font-size: 13px; line-height: 1.8; color: #b8c8d8;
+    border-left: 2px solid #2a6df4;
+  }
+  .guide-card .g-detail.open { display: block; }
+  .guide-card .g-detail b { color: #e8eef5; }
+  .guide-card .g-actions {
+    display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap;
+    align-items: center;
+  }
+  .guide-card .g-btn {
+    font-size: 12px; padding: 5px 12px; border-radius: 6px;
+    background: #24313d; border: 1px solid #2a3a48; color: #e8eef5;
+    cursor: pointer; user-select: none;
+  }
+  .guide-card .g-btn:hover { background: #2f3f4d; }
+  .guide-card .g-link {
+    font-size: 12px; color: #9ac8e8; text-decoration: none;
+    padding: 5px 10px; border: 1px dashed #2a6df4; border-radius: 6px;
+  }
+  .guide-card .g-link:hover { background: #1a2530; }
+  .guide-card .g-warn {
+    font-size: 11px; color: #7a8a9a; margin-top: 6px;
+    font-style: italic;
+  }
+  .guide-star {
+    color: #e2d47e; font-size: 12px; white-space: nowrap;
   }
 </style>
 <script>
@@ -495,6 +546,7 @@ var _hmt = _hmt || [];
   <div class="tab" data-panel="byStat">按词条反查</div>
   <div class="tab" data-panel="myBag">配置和对比</div>
   <div class="tab" data-panel="training">英雄培养</div>
+  <div class="tab" data-panel="guide">英雄攻略</div>
   <div class="tab" data-panel="team">阵容玩法</div>
   <div class="tab" data-panel="backup">备份</div>
 </div>
@@ -538,7 +590,15 @@ var _hmt = _hmt || [];
   </div>
   <div id="trainingResult"></div>
 </div>
-
+<div class="panel" id="guide">
+  <div class="form-block" style="padding:10px 12px">
+    <div class="field" style="margin-bottom:0">
+      <label>选择英雄</label>
+      <select id="guideHeroSelect"></select>
+    </div>
+  </div>
+  <div id="guideResult"></div>
+</div>
 <div class="panel" id="team">
   <div class="form-block">
     <h3>玩法模式</h3>
@@ -2006,7 +2066,63 @@ function closeAddSlot(name, type, slotKey) {
 }
 
 /* ============ 英雄培养页 ============ */
+/* ============ 英雄攻略页 ============ */
 
+function renderGuide(heroName) {
+  const box = document.getElementById('guideResult');
+  if (!box) return;
+  const h = HEROES[heroName];
+  if (!h) { box.innerHTML = ''; return; }
+
+  const guides = HERO_GUIDES[heroName] || [];
+
+  let html = `<div class="card"><h2>${heroName} · 攻略收录
+    <span class="role-tag">${h.role}</span>
+  </h2>`;
+
+  if (guides.length === 0) {
+    html += `<div class="tip info">暂未收录该英雄的攻略。我们会持续补充。</div></div>`;
+    box.innerHTML = html;
+    return;
+  }
+
+  html += `<div class="tip info">以下攻略按信源可信度排序，星级越高代表越可靠。点击「展开详情」查看完整要点。</div>`;
+
+  guides.forEach((g, idx) => {
+    const stars = '★'.repeat(g.star) + '☆'.repeat(5 - g.star);
+    const detailId = 'guide_detail_' + idx;
+    html += `<div class="guide-card">
+      <div class="g-head">
+        <span class="g-title">${g.title}</span>
+        <span class="guide-star">${stars}</span>
+      </div>
+      <div class="g-meta">
+        <span class="src">📌 ${g.source}</span>
+        <span class="date">📅 ${g.date}</span>
+      </div>
+      <div class="g-summary">${g.summary}</div>
+      <div class="g-detail" id="${detailId}">${g.detail}</div>
+      <div class="g-actions">
+        <span class="g-btn" onclick="toggleGuideDetail('${detailId}')">展开详情 ▾</span>
+        <a class="g-link" href="${g.link}" target="_blank" rel="noopener">查看原文 ↗</a>
+      </div>
+      <div class="g-warn">⚠️ 原文链接可能因作者删除或平台调整而失效</div>
+    </div>`;
+  });
+
+  html += `</div>`;
+  box.innerHTML = html;
+}
+
+function toggleGuideDetail(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.toggle('open');
+  const btn = el.parentNode.querySelector('.g-btn');
+  if (btn) {
+    btn.textContent = el.classList.contains('open') ? '收起详情 ▴' : '展开详情 ▾';
+  }
+}
 function renderTraining(heroName) {
   const box = document.getElementById('trainingResult');
   if (!box) return;
@@ -3204,7 +3320,326 @@ function analyzeThresholdShift(hero, oldItem, newStats) {
 }
 
 /* ============ 阵容玩法 ============ */
+/* ============================================================
+   英雄攻略数据
+   ============================================================ */
 
+const HERO_GUIDES = {
+  "雷教授": [
+    {
+      title: "顶配老雷怎么养？保姆级规划指南",
+      date: "2026-09-01",
+      source: "yaoqigh · 小编",
+      star: 5,
+      summary: "雷教授单C体系核心是极高爆发秒杀敌方C位，平民互撕表现优异，能越战。但需集中资源重点培养，半吊子不如养个正经主C。",
+      detail: "装备：榴弹发射器 + 等离子大剑。词条：技能强度 > 伤害增幅 > 暴击 > 穿透。徽章：初始能量、技能强度、伤害增幅。芯片：雷蛰全套，补强能、暴击。阵容成型：老乔（红能量）+ 雷教授（黄能量）+ 斗士 + 铁僧 + 老侃。S3带黄能量的雷教授可轻松越3e战力秒杀。",
+      link: "https://m.yaoqigh.com/article/2080"
+    },
+    {
+      title: "平民最强阵容雷教授养成思路（全干货）",
+      date: "2026-08-14",
+      source: "今日头条 · 无双鬼",
+      star: 4,
+      summary: "S1不建议直接养雷教授，推关效率低、技能易被打断。建议先用国家队过渡，S3必拿老乔后再转型。",
+      detail: "S1用国家队：大嘴山姆 + 兰博 + 巫师老侃 + 机器屠夫 + 蜜雪儿。属性推荐：巫师老侃优先技能强度；兰博攻速堆到0.9-1.0，暴击30%左右，剩下堆攻击；大嘴山姆纯闪避；蜜雪儿主堆攻速；机器屠夫三星就停。雷教授转型时机在S3，老乔四星解锁上场后。",
+      link: "https://www.toutiao.com/article/7674113971607159302/"
+    },
+    {
+      title: "S4赛季雷教授上分最强阵容推荐",
+      date: "2026-05-21",
+      source: "云手机导航网",
+      star: 4,
+      summary: "S4雷教授成型阵容：雷教授 + 老侃 + 蜜雪 + 斗士 + 大嘴。核心是蜜雪帮雷教授吃掉对面老侃盾的晕眩，保证大招打满。",
+      detail: "前期过渡阵容：雷教授 + 老侃 + 千代 + 斗士 + 大嘴，可强势压制兰博队。成型后蜜雪专武拉到60级，降低敌方能量和伤害减免。站位可针对敌方千代位置灵活调整。缺点：单C阵容，雷教授练度低时打不死敌方斗士。",
+      link: "https://yunphonedh.cn/wenzhang/4995.html"
+    }
+  ],
+  "大嘴山姆": [
+    {
+      title: "英雄攻略丨大嘴山姆（T0主坦）",
+      date: "2026-04-13",
+      source: "小米游戏中心 · 好运来了",
+      star: 5,
+      summary: "橙色传说+最强前排，嘲讽敌人并带反伤。闪避堆到75%左右最佳，S2后补50%暴击抵抗，剩余堆生命。",
+      detail: "1技能嘲讽为主要承伤技能，优先点满。4技能前期开了就行，可不升级，后期技能书充足再升。徽章洗闪避为主，其次生命、暴击抵抗。装备穿护盾战衣优先洗闪避。专武1和3技能克制兰博千代队伍，配合冰霜核芯降低对面攻速；2技能眩晕打断敌方输出。",
+      link: "https://game.xiaomi.com/viewpoint/1672495402_1776164163333_13"
+    },
+    {
+      title: "全英雄装备升星技能词条搭配（大嘴山姆部分）",
+      date: "2026-03-31",
+      source: "九游 · 游戏宝",
+      star: 4,
+      summary: "主T定位，词条优先级：闪避（堆75%）＞生命＞减伤＞双抗。升星：3星必满解锁嘲讽，4星看资源。技能：主1、4，副2、3。",
+      detail: "装备：防具选抗压头盔/护盾战衣，枪械选脉冲步枪，兵刃选破甲刃。零氪国家队开荒阵容：大嘴山姆 + 兰博 + 巫师老侃 + 机器屠夫 + 蜜雪儿。只给兰博/山姆/老侃做红装。",
+      link: "https://a.9game.cn/news/11796232.html"
+    }
+  ],
+  "巫师老侃": [
+    {
+      title: "巫师老侃英雄攻略：万能辅助",
+      date: "2026-03-31",
+      source: "九游 · 3DM",
+      star: 4,
+      summary: "开局给双C套攻速暴击免控盾的万能辅助，护盾破碎眩晕攻击者1.2秒。三星解锁开局套盾。",
+      detail: "词条优先级：技能强度＞生命＞减伤＞冷却。升星：3星必满，4星随缘。技能：主1、4，副2、3。护盾值跟技能强度挂钩。搭配三星大嘴山姆时，老侃给双C套盾；单前排阵容时，老侃给山姆和兰博套盾，空出位置带蜜雪儿补控制凑自由者光环。",
+      link: "https://a.9game.cn/fkssj/11796975.html"
+    }
+  ],
+  "小丑杰克": [
+    {
+      title: "小丑杰克英雄攻略：4星可用，60级专武质变",
+      date: "2026-03-31",
+      source: "九游 · 3DM",
+      star: 4,
+      summary: "4星可用，可上二队做主C。6星60级专武完全体，主动技能锁定敌最高攻击英雄，直到目标死亡才换人。",
+      detail: "词条：暴击为主，均衡增加攻击、攻速、吸血。三星释放主技能后本体额外提高暴击，持续6秒，容易达到100%暴击。五星突破专武上限，60级专武后分身无数量限制，可无限分身。阵容搭配：兰博 + 千代 + 巫师老侃 + 小丑杰克 + 大嘴山姆。",
+      link: "https://a.9game.cn/fkssj/11797026.html"
+    }
+  ],
+  "永生老乔": [
+    {
+      title: "永生老乔三大流派玩法介绍",
+      date: "2026-03-31",
+      source: "九游 · 3DM",
+      star: 4,
+      summary: "三大流派：暴击法强混合流（伤害上限最高但怕抗暴）、纯法强流（输出稳定）、高增伤低法强流（针对自由斗士）。",
+      detail: "被动自带32%暴击（面板不显示）。大招攻击最近两个单位，可能打到中间位置。专武1灼烧可暴击秒后排，专武2百分比伤害克制高血量自由斗士，专武3保命回能。穿透属性必不可少，老乔自带武器404+被动400共808穿透，溢出也会增伤。",
+      link: "https://a.9game.cn/fkssj/11797201.html"
+    },
+    {
+      title: "永生老乔装备及阵容推荐",
+      date: "2026-02-24",
+      source: "九游",
+      star: 4,
+      summary: "装备：榴弹发射器 + 护盾战衣 + 等离子大剑。属性优先级：暴击、技能强度、伤害加成 > 抗性穿透 > 攻速、生命回收 > 伤害减免。",
+      detail: "阵容分单核和双核。单核：老乔 + 李忠诚 + 无念铁僧 + 北境大帝（大嘴山姆）+ 蜜雪儿（神父欧玛），全队保老乔，拉长对局等被动叠起来。双核：老乔 + 雷教授（过渡）+ 蜜雪儿 + 无念铁僧 + 大嘴山姆，主打速攻爆发。",
+      link: "https://www.9game.cn/news/11724861.html"
+    }
+  ],
+  "雾隐千代": [
+    {
+      title: "雾隐千代培养详细攻略：核弹流 vs 普攻流",
+      date: "2026-04-23",
+      source: "九游 · 游戏宝",
+      star: 5,
+      summary: "核弹流只适合大佬（红能量+初始阵开局大招），普攻流适合没有红能量的玩家。S3后核弹流彻底告别舞台，因为改版后大招优先隐身，打不到对方千代。",
+      detail: "技能加点：主2、3、4，副1。S3普攻流词条：命中、攻击、攻速、增伤、抗暴、吸血。S4针对自由斗士需偏向增伤和破抗。专武最大作用是对方兰博被大招打出无敌后，一丝血可以弹死。吸血不需要太高，10-20%即可。",
+      link: "https://a.9game.cn/news/11836579.html"
+    }
+  ],
+  "北境大帝": [
+    {
+      title: "《北境之王》活动攻略：六边形战士",
+      date: "2026-01-12",
+      source: "小米游戏中心 · 奥特喵本喵",
+      star: 4,
+      summary: "S1超凡英雄，基础属性比传说高一个档次。能打后排、眩晕、回血、加盾、加双防，六边形战士。三星开局高额护盾，坦度比坦克还强。",
+      detail: "满级属性：生命539万，攻击24万，技能强度16.5万。主动技能：冲向最远目标，造成2倍攻击+2.8倍技能强度伤害，眩晕1秒，回血最高20%。2、3被动共提升45%攻击、36%攻速、60%生命。4技能开局上盾，最高50%护盾+50%双抗持续6秒。阵容：兰博 + 千代 + 侃爷 + 大嘴 + 大帝。",
+      link: "https://game.xiaomi.com/viewpoint/1672495402_1768301697048_13"
+    },
+    {
+      title: "北境大帝英雄攻略：攻速阵站位详解",
+      date: "2026-03-31",
+      source: "九游 · 3DM",
+      star: 4,
+      summary: "三星大帝开局获高额护盾，开大获得双抗提升。有大帝互殴时，可与敌方大嘴山姆对位，开大将其撞飞至后排，防止嘲讽己方双C。",
+      detail: "先手开大冲锋的大帝有概率把敌方大帝的大招攻击目标转到自己身上，保护己方后排。高练度大帝可直接秒掉敌方双C。阵容1：S1兰博主C，红魔副C，侃爷辅助，大嘴抗伤，大帝功能性前排。阵容2：S2兰博主C，千代副C，同上。",
+      link: "https://a.9game.cn/fkssj/11797037.html"
+    }
+  ],
+  "变形Y哥": [
+    {
+      title: "英雄攻略丨变形Y哥：无限叠加护甲的大肉坦克",
+      date: "2026-06-09",
+      source: "小米游戏中心 · 奥特喵本喵",
+      star: 4,
+      summary: "坦克定位，高生命高双抗，拥有辅助功能的团队副坦。三星可用，若无法三星不建议获取。三星后进入一队与大嘴间断性互抗伤害。",
+      detail: "徽章洗练：闪避+生命为主，或高伤害减免+生命。装备洗练：闪避+暴击抵抗，或高减伤+生命。1技能冲刺嘲讽，推荐最后升级，平民1级即可。2技能提高55%生命，越高越好。专武1每次释放技能恢复6%生命。专武3打碎护盾的敌人初始攻速永久降低5%，每20秒触发。",
+      link: "http://game.xiaomi.com/viewpoint/1672495402_1781089717032_13"
+    }
+  ],
+  "铁肘老大": [
+    {
+      title: "铁肘老大玩法介绍：4星成型主C",
+      date: "2026-07-26",
+      source: "九游",
+      star: 4,
+      summary: "普攻型后台输出，4星成型可击穿高额减伤前排，稳定担任队伍主C。6星完全体，三段普攻削减敌方血量上限。",
+      detail: "站位必须后排，无免控无护甲，贴脸极易暴毙。词条优先攻击、伤害增加，补充生命回收、护甲穿透，海兽区可携带暴击抵抗。标准套装：穿甲机枪 + 动力大锤 + 护盾战衣。芯片首选渔获核芯，弥补控场短板。顶配阵容：老乔 + 铁肘老大 + 水底之王 + 自由斗士 + 无念铁僧。",
+      link: "https://www.9game.cn/news/11985831.html"
+    }
+  ],
+  "蜜雪儿": [
+    {
+      title: "蜜雪儿玩法指南：平民零氪强力控场",
+      date: "2026-06-15",
+      source: "九游 · 9K9K",
+      star: 4,
+      summary: "自由者阵营传说法师，平民零氪强力控场辅助，辅助强度仅次于巫师老侃。1技能随机冰冻3个敌人2.4秒，专武收益低，41级即可。",
+      detail: "词条选择：攻击速度、生命、伤害减免。核心是活下去，释放技能尽可能多。技能强度收益可忽略不计。新手五件套：蜜雪儿 + 雷教授 + 米娅 + 绿魔 + 杰森。后期可当2队使用。",
+      link: "https://a.9game.cn/news/11910971.html"
+    },
+    {
+      title: "蜜雪儿培养攻略：攻速是核心属性",
+      date: "2026-07-30",
+      source: "九游",
+      star: 3,
+      summary: "纯功能挂件，核心目标是更快攒满能量释放大招。攻速越高，普攻攒能越快，能不间断循环冰冻控制。",
+      detail: "毕业装备：榴弹发射器 + 护盾战衣 + 等离子大剑。词条优先级：攻击速度 > 生命 > 技能强度。核心芯片：吹风。装备词条全部堆攻速，富余补生命、技能强度。徽章四条词条优先洗攻速，其次生命。",
+      link: "https://www.9game.cn/news/11995729.html"
+    }
+  ],
+  "铁腿红魔": [
+    {
+      title: "全英雄装备升星技能词条搭配（铁腿红魔部分）",
+      date: "2026-03-31",
+      source: "九游 · 游戏宝",
+      star: 4,
+      summary: "射手定位，词条优先级：攻击＞穿透＞生命＞减伤。升星：3星可用，4星质变。技能：主1、3，副2、4。",
+      detail: "装备：枪械选脉冲步枪，兵刃选破甲刃，防具选抗压头盔。定位是收割位，高伤补刀快速清理残血。零氪国家队开荒时，只给兰博/山姆/老侃做红装，红魔靠白嫖过渡。",
+      link: "https://a.9game.cn/news/11796232.html"
+    }
+  ],
+  "兰博": [
+    {
+      title: "兰博养成详解：S1主C，攻速暴击流",
+      date: "2026-07-21",
+      source: "九游 · 徽章推荐",
+      star: 4,
+      summary: "国家队主C，攻速≥0.93、暴击≥20%、生命回收≥20%。徽章优先攻速＞暴击率＞暴伤＞物穿＞攻击。",
+      detail: "技能：主1、4，副2、3。装备：榴弹发射器 + 破甲刃 + 护盾战衣。徽章词条优先级：攻速＞暴击率＞暴击伤害＞物穿＞攻击。攻速是核心属性，堆到0.93以上才能保证输出循环。生命回收保留20%左右即可，不要堆太高。",
+      link: "https://www.9game.cn/news/11962771.html"
+    },
+    {
+      title: "英雄攻略丨兰博（开荒主C）",
+      date: "2026-06-09",
+      source: "小米游戏中心",
+      star: 4,
+      summary: "新手开荒首选主C，普攻型物理输出。暴击和攻速优先，命中溢出可转普攻伤害。",
+      detail: "S1开荒阵容：大嘴山姆 + 兰博 + 巫师老侃 + 机器屠夫 + 蜜雪儿。兰博走攻速物攻流，词条带暴击、攻击速度、攻击。三星可用，四星质变。零氪建议只给兰博做红装，其他英雄过渡即可。",
+      link: "https://game.xiaomi.com/viewpoint/1672495402_1776164163333_13"
+    }
+  ],
+  "机器屠夫": [
+    {
+      title: "全英雄装备升星技能词条搭配（机器屠夫部分）",
+      date: "2026-03-31",
+      source: "九游 · 游戏宝",
+      star: 4,
+      summary: "副坦/切后钩子，词条优先级：生命＞减伤＞攻击＞穿透。升星：3星即停，绝不继续升。技能：主1、4，副2、3。",
+      detail: "装备：防具选抗压头盔/护盾战衣，枪械选脉冲步枪。站位决定勾人方向：放上方勾下方，放下方勾上方，放中间则上下随机。对战大嘴山姆时，屠夫可能把山姆勾过来，反而让山姆嘲讽全场，需注意站位。3星质变解锁4技能，专武41级后开局获护盾。",
+      link: "https://a.9game.cn/news/11796232.html"
+    },
+    {
+      title: "萌新开荒避坑指南：机器屠夫",
+      date: "2026-02-13",
+      source: "TapTap",
+      star: 3,
+      summary: "钩子英雄，开局钩取敌方后排。3星即停，资源优先给主C。",
+      detail: "机器屠夫的核心是钩后排，需要卡好站位。放上方第三排，能精准钩取敌方后排脆皮。钩中后眩晕并减甲，配合刺客速秒敌方前排。不要给他堆太多资源，3星够用。",
+      link: "https://www.taptap.cn/moment/519750085185306522"
+    }
+  ],
+  "不死州长": [
+    {
+      title: "多场景阵容推荐（不死州长部分）",
+      date: "2026-03-19",
+      source: "小米游戏中心",
+      star: 3,
+      summary: "炮灰/承伤定位，站最下方第一排吸引BOSS第二轮攻击。",
+      detail: "不死州长是副坦/炮灰定位，主要作用是在BOSS战中站最下方第一排吸引伤害，为队伍争取输出时间。词条优先级：生命＞闪避＞生命恢复＞护甲＞抗性。装备以生存为主，不需要投入太多资源。",
+      link: "https://game.xiaomi.com/viewpoint/1672495402_1776164163333_13"
+    }
+  ],
+  "鬼火杰森": [
+    {
+      title: "S1全英雄解析（鬼火杰森部分）",
+      date: "2026-01-20",
+      source: "小米游戏中心",
+      star: 3,
+      summary: "AOE伤害拉满，新手五件套之一。技能挂燃烧是主要输出，能量伤害。",
+      detail: "鬼火杰森是新手五件套（蜜雪儿 + 雷教授 + 米娅 + 绿魔 + 杰森）之一，走AOE持续伤害路线。词条优先级：技能强度＞抗性穿透＞暴击＞生命。技能挂燃烧是主要输出手段，技能强度和抗性穿透优先。",
+      link: "https://game.xiaomi.com/viewpoint/1672495402_1776164163333_13"
+    }
+  ],
+  "米娅": [
+    {
+      title: "S1全英雄解析（米娅部分）",
+      date: "2026-01-20",
+      source: "小米游戏中心",
+      star: 3,
+      summary: "群控辅助，五人强控，三星质变控制时长翻倍，专武激活一技能即可。",
+      detail: "米娅是群控辅助，核心作用是控场。三星质变，控制时长翻倍。专武激活一技能即可，不需要堆太高。词条优先级：技能强度＞生命＞减伤＞冷却。新手五件套之一。",
+      link: "https://game.xiaomi.com/viewpoint/1672495402_1776164163333_13"
+    }
+  ],
+  "神父欧玛": [
+    {
+      title: "S1全英雄解析（神父欧玛部分）",
+      date: "2026-01-20",
+      source: "小米游戏中心",
+      star: 3,
+      summary: "当前版本唯一纯奶，召唤流三巨头之一。遇到海兽鲨鱼会痿。",
+      detail: "神父欧玛是纯奶定位，技能强度和生命优先，保证治疗量和站场。召唤流三巨头之一。缺点是遇到海兽鲨鱼时表现不佳。词条优先级：技能强度＞生命＞伤害减免＞冷却缩减。",
+      link: "https://game.xiaomi.com/viewpoint/1672495402_1776164163333_13"
+    }
+  ],
+  "终结者": [
+    {
+      title: "全英雄装备升星技能词条搭配（终结者部分）",
+      date: "2026-03-31",
+      source: "九游 · 游戏宝",
+      star: 3,
+      summary: "深渊专用副坦，词条优先级：减伤＞生命＞抗性＞生命回收。3星够用，4星看资源。",
+      detail: "装备：防具选抗压头盔/护盾战衣，枪械选脉冲步枪，兵刃选破甲刃。深渊专用副坦，减伤和生命优先。3星够用，4星看资源。专武提升反伤能力。",
+      link: "https://a.9game.cn/news/11796232.html"
+    }
+  ],
+  "戴安娜": [
+    {
+      title: "城战攻略（戴安娜部分）",
+      date: "2026-04-13",
+      source: "知乎",
+      star: 3,
+      summary: "一拳超人，群体爆发，减甲技能削弱敌方防御。",
+      detail: "戴安娜是S1开荒后期英雄，范围削甲并眩晕，配合刺客速秒敌方前排。词条优先级：攻击＞护甲穿透＞暴击＞生命。物理输出，护甲穿透有用。",
+      link: "https://www.zhihu.com/question/1913687558973231962"
+    }
+  ],
+  "李忠诚": [
+    {
+      title: "S1全英雄解析（李忠诚部分）",
+      date: "2026-01-20",
+      source: "小米游戏中心",
+      star: 3,
+      summary: "召唤流三巨头之一，释放机械狗吸引BOSS攻击。技能强度和攻击兼顾。",
+      detail: "李忠诚是召唤流核心，释放机械狗吸引BOSS攻击。第三周活动可得。词条优先级：技能强度＞攻击＞攻速＞生命。技能强度和攻击兼顾，攻速保证召唤物产出。",
+      link: "https://game.xiaomi.com/viewpoint/1672495402_1776164163333_13"
+    }
+  ],
+  "蜥蜴侠": [
+    {
+      title: "S1全英雄解析（蜥蜴侠部分）",
+      date: "2026-01-20",
+      source: "小米游戏中心",
+      star: 3,
+      summary: "开大变身远程范围攻击，但机制有问题，整体作用有限。",
+      detail: "蜥蜴侠开大变身远程范围攻击，但开大前攻速较慢，机制存在问题，整体作用有限。词条优先级：技能强度＞攻击＞伤害增加＞生命。不建议优先培养。",
+      link: "https://game.xiaomi.com/viewpoint/1672495402_1776164163333_13"
+    }
+  ],
+  "机修萝莉": [
+    {
+      title: "S1全英雄解析（机修萝莉部分）",
+      date: "2026-01-20",
+      source: "小米游戏中心",
+      star: 3,
+      summary: "召唤流三巨头之一，专武质变补足输出，非主玩召唤流不建议。",
+      detail: "机修萝莉是召唤流三巨头之一，召唤物抗伤。专武质变补足输出，非主玩召唤流不建议优先培养。词条优先级：技能强度＞生命＞减伤＞护甲。技能强度和生命优先。",
+      link: "https://game.xiaomi.com/viewpoint/1672495402_1776164163333_13"
+    }
+  ]
+};
 const PRESET_TEAMS = {
   "国家队（兰博核心）": {
     heroes: ["大嘴山姆", "兰博", "巫师老侃", "机器屠夫", "蜜雪儿"],
@@ -3543,7 +3978,20 @@ if (trainingHeroSelectEl) {
   trainingHeroSelectEl.value = Object.keys(HEROES)[0];
   renderTraining(trainingHeroSelectEl.value);
 }
-
+/* 英雄攻略页下拉 */
+const guideHeroSelectEl = document.getElementById('guideHeroSelect');
+if (guideHeroSelectEl) {
+  Object.keys(HEROES).forEach(name => {
+    const o = document.createElement('option');
+    o.value = name; o.textContent = name;
+    guideHeroSelectEl.appendChild(o);
+  });
+  guideHeroSelectEl.onchange = () => {
+    renderGuide(guideHeroSelectEl.value);
+  };
+  guideHeroSelectEl.value = Object.keys(HEROES)[0];
+  renderGuide(guideHeroSelectEl.value);
+}
 renderHero(heroSelectEl.value);
 renderStat(statSelectEl.value);
 renderBag(activeBagHero);
