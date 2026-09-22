@@ -444,7 +444,35 @@
   .dir-group-title {
     font-size: 12px; color: #7a8a9a; margin: 12px 0 4px;
     border-left: 2px solid #2a6df4; padding-left: 6px;
-  }  /* 英雄攻略 */
+  } 
+   /* 模拟中心 */
+  .sim-row {
+    display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end;
+    margin-bottom: 12px;
+  }
+  .sim-row .field { flex: 1; min-width: 120px; margin-bottom: 0; }
+  .sim-result {
+    background: #0f1720; border: 1px solid #2a6df4; border-radius: 10px;
+    padding: 14px; margin-top: 12px;
+  }
+  .sim-result .s-line {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 0; border-bottom: 1px solid #1e2a36;
+    font-size: 13px; color: #b8c8d8;
+  }
+  .sim-result .s-line:last-child { border-bottom: none; }
+  .sim-result .s-line .s-label { color: #7a8a9a; }
+  .sim-result .s-line .s-val { font-weight: 600; }
+  .sim-result .s-val.ok { color: #7ee2a8; }
+  .sim-result .s-val.warn { color: #e2d47e; }
+  .sim-result .s-val.bad { color: #e87a7a; }
+  .sim-tag {
+    display: inline-block; font-size: 11px; padding: 2px 8px;
+    border-radius: 6px; margin-left: 6px;
+  }
+  .sim-tag.legend { background: #2a2a1f; color: #e2d47e; border: 1px solid #5a5a2f; }
+  .sim-tag.transcend { background: #2a1a3a; color: #d8a8f0; border: 1px solid #5a3a8a; }
+   /* 英雄攻略 */
   .guide-card {
     background: #1e2a36; border: 1px solid #2a3a48; border-radius: 10px;
     padding: 12px 14px; margin-bottom: 10px;
@@ -546,6 +574,7 @@ var _hmt = _hmt || [];
   <div class="tab" data-panel="byStat">按词条反查</div>
   <div class="tab" data-panel="myBag">配置和对比</div>
   <div class="tab" data-panel="training">英雄培养</div>
+  <div class="tab" data-panel="simulator">模拟中心</div>
   <div class="tab" data-panel="guide">英雄攻略</div>
   <div class="tab" data-panel="team">阵容玩法</div>
   <div class="tab" data-panel="backup">备份</div>
@@ -589,6 +618,55 @@ var _hmt = _hmt || [];
     </div>
   </div>
   <div id="trainingResult"></div>
+</div>
+ <div class="panel" id="simulator">
+  <div class="form-block" style="padding:12px">
+    <div class="sim-row">
+      <div class="field">
+        <label>选择英雄</label>
+        <select id="simHeroSelect"></select>
+      </div>
+      <div class="field">
+        <label>当前星级</label>
+        <select id="simCurrentStar">
+          <option value="0">0星（未合成）</option>
+          <option value="1">1星</option>
+          <option value="2">2星</option>
+          <option value="3">3星</option>
+          <option value="4">4星</option>
+          <option value="5">5星</option>
+          <option value="6">6星</option>
+          <option value="7">7星</option>
+          <option value="8">8星</option>
+          <option value="9">9星</option>
+          <option value="10">10星（满星）</option>
+        </select>
+      </div>
+    </div>
+    <div class="sim-row">
+      <div class="field">
+        <label>当前碎片数</label>
+        <input type="number" id="simCurrentFrags" value="0" min="0">
+      </div>
+      <div class="field">
+        <label>目标星级</label>
+        <select id="simTargetStar">
+          <option value="1">1星</option>
+          <option value="2">2星</option>
+          <option value="3">3星</option>
+          <option value="4">4星</option>
+          <option value="5">5星</option>
+          <option value="6">6星</option>
+          <option value="7">7星</option>
+          <option value="8">8星</option>
+          <option value="9">9星</option>
+          <option value="10">10星（满星）</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn" onclick="runStarSim()">开始计算</button>
+  </div>
+  <div id="simResult"></div>
 </div>
 <div class="panel" id="guide">
   <div class="form-block" style="padding:10px 12px">
@@ -2068,6 +2146,101 @@ function closeAddSlot(name, type, slotKey) {
 /* ============ 英雄培养页 ============ */
 /* ============ 英雄攻略页 ============ */
 
+ /* ============ 升星模拟 ============ */
+
+function runStarSim() {
+  const box = document.getElementById('simResult');
+  if (!box) return;
+
+  const heroName = document.getElementById('simHeroSelect').value;
+  const currentStar = parseInt(document.getElementById('simCurrentStar').value);
+  const currentFrags = parseInt(document.getElementById('simCurrentFrags').value) || 0;
+  const targetStar = parseInt(document.getElementById('simTargetStar').value);
+
+  if (!heroName) { box.innerHTML = `<div class="tip warn">请先选择英雄。</div>`; return; }
+  if (targetStar <= currentStar) {
+    box.innerHTML = `<div class="tip warn">目标星级必须高于当前星级。</div>`;
+    return;
+  }
+
+  const isTranscend = TRANSCEND_HEROES.indexOf(heroName) >= 0;
+  const screwType = isTranscend ? '红螺丝' : '黄螺丝';
+  const rarityTag = isTranscend
+    ? `<span class="sim-tag transcend">超凡</span>`
+    : `<span class="sim-tag legend">传说</span>`;
+
+  /* 计算需要的碎片和螺丝 */
+  const needFrag = STAR_FRAG_TOTAL[targetStar] - STAR_FRAG_TOTAL[currentStar];
+  const needScrew = (STAR_SCREW_TOTAL[targetStar] || 0) - (STAR_SCREW_TOTAL[currentStar] || 0);
+
+  const fragGap = Math.max(0, needFrag - currentFrags);
+  const screwGap = needScrew;
+
+  /* 关键节点 */
+  const milestones = [];
+  if (currentStar < 3 && targetStar >= 3) {
+    milestones.push({ name: '3星（解锁4技能）', frag: STAR_FRAG_TOTAL[3] - STAR_FRAG_TOTAL[currentStar] - currentFrags });
+  }
+  if (currentStar < 5 && targetStar >= 5) {
+    milestones.push({ name: '5星', frag: STAR_FRAG_TOTAL[5] - STAR_FRAG_TOTAL[currentStar] - currentFrags });
+  }
+  if (currentStar < 10 && targetStar >= 10) {
+    milestones.push({ name: '满星（10星）', frag: STAR_FRAG_TOTAL[10] - STAR_FRAG_TOTAL[currentStar] - currentFrags });
+  }
+
+  let html = `<div class="sim-result">
+    <div class="s-line">
+      <span class="s-label">英雄</span>
+      <span class="s-val">${heroName} ${rarityTag}</span>
+    </div>
+    <div class="s-line">
+      <span class="s-label">当前状态</span>
+      <span class="s-val">${currentStar}星 · ${currentFrags} 碎片</span>
+    </div>
+    <div class="s-line">
+      <span class="s-label">目标星级</span>
+      <span class="s-val">${targetStar}星</span>
+    </div>
+    <div class="s-line">
+      <span class="s-label">需要碎片</span>
+      <span class="s-val warn">${needFrag} 片</span>
+    </div>
+    <div class="s-line">
+      <span class="s-label">现有碎片</span>
+      <span class="s-val">${currentFrags} 片</span>
+    </div>
+    <div class="s-line">
+      <span class="s-label">碎片缺口</span>
+      <span class="s-val ${fragGap > 0 ? 'bad' : 'ok'}">${fragGap > 0 ? '还差 ' + fragGap + ' 片' : '已够 ✅'}</span>
+    </div>`;
+
+  if (needScrew > 0) {
+    html += `<div class="s-line">
+      <span class="s-label">${screwType}需求</span>
+      <span class="s-val ${screwGap > 0 ? 'bad' : 'ok'}">${screwGap > 0 ? '需要 ' + screwGap + ' 个' : '已够 ✅'}</span>
+    </div>`;
+  } else {
+    html += `<div class="s-line">
+      <span class="s-label">${screwType}需求</span>
+      <span class="s-val ok">5星以下不需要</span>
+    </div>`;
+  }
+
+  if (milestones.length > 0) {
+    html += `<div class="s-line" style="border-top:1px dashed #2a3a48; margin-top:6px; padding-top:10px">
+      <span class="s-label" style="font-weight:600;color:#9ac8e8">距离关键节点</span>
+    </div>`;
+    milestones.forEach(m => {
+      html += `<div class="s-line">
+        <span class="s-label">${m.name}</span>
+        <span class="s-val ${m.frag <= 0 ? 'ok' : 'warn'}">${m.frag <= 0 ? '已达成 ✅' : '还差 ' + m.frag + ' 片'}</span>
+      </div>`;
+    });
+  }
+
+  html += `</div>`;
+  box.innerHTML = html;
+}
 function renderGuide(heroName) {
   const box = document.getElementById('guideResult');
   if (!box) return;
@@ -3323,7 +3496,42 @@ function analyzeThresholdShift(hero, oldItem, newStats) {
 /* ============================================================
    英雄攻略数据
    ============================================================ */
+/* ============================================================
+   升星消耗数据
+   ============================================================ */
 
+/* 升到该星级所需碎片（全英雄通用） */
+const STAR_FRAG_COST = {
+  1: 10, 2: 40, 3: 130, 4: 320, 5: 600,
+  6: 300, 7: 360, 8: 410, 9: 450, 10: 500
+};
+
+/* 累计碎片 */
+const STAR_FRAG_TOTAL = (() => {
+  const t = { 0: 0 };
+  let sum = 0;
+  for (let i = 1; i <= 10; i++) { sum += STAR_FRAG_COST[i]; t[i] = sum; }
+  return t;
+})();
+
+/* 5星以上螺丝消耗 */
+const STAR_SCREW_COST = {
+  6: 25, 7: 75, 8: 150, 9: 200, 10: 350
+};
+
+/* 累计螺丝 */
+const STAR_SCREW_TOTAL = (() => {
+  const t = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+  let sum = 0;
+  for (let i = 6; i <= 10; i++) { sum += STAR_SCREW_COST[i]; t[i] = sum; }
+  return t;
+})();
+
+/* 超凡英雄名单（用户确认） */
+const TRANSCEND_HEROES = [
+  "北境大帝", "过江龙", "探案双子星",
+  "自由斗士", "海底之王", "铁肘老大", "战神小布", "修女瑟琳娜"
+];
 const HERO_GUIDES = {
   "雷教授": [
     {
@@ -3991,6 +4199,15 @@ if (guideHeroSelectEl) {
   };
   guideHeroSelectEl.value = Object.keys(HEROES)[0];
   renderGuide(guideHeroSelectEl.value);
+}
+ /* 模拟中心英雄下拉 */
+const simHeroSelectEl = document.getElementById('simHeroSelect');
+if (simHeroSelectEl) {
+  Object.keys(HEROES).forEach(name => {
+    const o = document.createElement('option');
+    o.value = name; o.textContent = name;
+    simHeroSelectEl.appendChild(o);
+  });
 }
 renderHero(heroSelectEl.value);
 renderStat(statSelectEl.value);
