@@ -509,7 +509,35 @@
   .gift-section-title {
     font-size: 13px; color: #9ac8e8; font-weight: 600;
     margin: 16px 0 8px; border-left: 3px solid #2a6df4; padding-left: 8px;
+  }  .gift-card.copied {
+    border-color: #2f6a45;
+    background: #1a2a1f;
+    opacity: 0.75;
   }
+  .gift-card.copied .gift-code {
+    color: #7a8a9a;
+    border-color: #2a3a48;
+    text-decoration: line-through;
+  }
+  .gift-card .copied-tag {
+    display: inline-block; font-size: 11px; padding: 2px 8px;
+    border-radius: 6px; margin-left: 6px;
+    background: #1f3a2a; color: #7ee2a8;
+    border: 1px solid #2f6a45;
+  }
+  .gift-toolbar {
+    display: flex; justify-content: space-between; align-items: center;
+    flex-wrap: wrap; gap: 8px; margin-top: 10px;
+  }
+  .gift-toolbar .gift-count {
+    font-size: 12px; color: #7a8a9a;
+  }
+  .gift-toolbar .gift-reset {
+    font-size: 12px; padding: 4px 10px; border-radius: 6px;
+    background: #24313d; border: 1px solid #2a3a48; color: #9ab;
+    cursor: pointer;
+  }
+  .gift-toolbar .gift-reset:hover { background: #2f3f4d; }
    /* 英雄攻略 */
   .guide-card {
     background: #1e2a36; border: 1px solid #2a3a48; border-radius: 10px;
@@ -758,9 +786,13 @@ var _hmt = _hmt || [];
       以下礼包码来自玩家社区整理，可能存在过期或失效的情况。兑换方式：游戏内点击左上角头像 → 个人信息页 → 礼包码入口 → 输入兑换码。
       <br>⚠️ 本模块数据为人工整理，非官方实时同步。遇到失效请忽略。
     </div>
-    <div class="field" style="margin-top:10px">
+      <div class="field" style="margin-top:10px">
       <label>搜索礼包码（可选）</label>
       <input type="text" id="giftSearch" placeholder="输入关键词筛选..." oninput="renderGiftList()">
+    </div>
+    <div class="gift-toolbar">
+      <span class="gift-count" id="giftCount"></span>
+      <span class="gift-reset" onclick="resetGiftCopied()">重置已复制标记</span>
     </div>
   </div>
   <div id="giftResult"></div>
@@ -2210,6 +2242,20 @@ function renderGiftList() {
   const searchEl = document.getElementById('giftSearch');
   const keyword = searchEl ? searchEl.value.trim().toLowerCase() : '';
 
+  let totalCount = 0;
+  let copiedCount = 0;
+  GIFT_CODES.forEach(group => {
+    group.codes.forEach(c => {
+      totalCount++;
+      if (isGiftCopied(c.code)) copiedCount++;
+    });
+  });
+
+  const countEl = document.getElementById('giftCount');
+  if (countEl) {
+    countEl.textContent = `共 ${totalCount} 个礼包码 · 已复制 ${copiedCount} 个`;
+  }
+
   let html = '';
 
   GIFT_CODES.forEach(group => {
@@ -2223,14 +2269,18 @@ function renderGiftList() {
     html += `<div class="gift-section-title">${group.group}（${matched.length}）</div>`;
 
     matched.forEach(c => {
-      html += `<div class="gift-card">
+      const copied = isGiftCopied(c.code);
+      html += `<div class="gift-card ${copied ? 'copied' : ''}" id="gift-${encodeURIComponent(c.code)}">
         <div class="gift-head">
-          <span class="gift-code">${c.code}</span>
+          <span>
+            <span class="gift-code">${c.code}</span>
+            ${copied ? `<span class="copied-tag">✅ 已复制</span>` : ''}
+          </span>
           ${c.date ? `<span class="gift-date">📅 ${c.date}</span>` : ''}
         </div>
         <div class="gift-reward">🎁 ${c.reward}</div>
         <div class="gift-actions">
-          <button class="gift-btn" onclick="copyGiftCode('${c.code}')">复制礼包码</button>
+          <button class="gift-btn" onclick="copyGiftCode('${c.code}')">${copied ? '再复制一次' : '复制礼包码'}</button>
         </div>
       </div>`;
     });
@@ -2244,18 +2294,27 @@ function renderGiftList() {
 }
 
 function copyGiftCode(code) {
+  const doMark = () => {
+    if (!isGiftCopied(code)) {
+      giftCopiedList.push(code);
+      saveGiftCopied(giftCopiedList);
+    }
+    renderGiftList();
+  };
+
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(code).then(() => {
+      doMark();
       alert('已复制：' + code);
     }).catch(() => {
-      fallbackCopy(code);
+      fallbackCopy(code, doMark);
     });
   } else {
-    fallbackCopy(code);
+    fallbackCopy(code, doMark);
   }
 }
 
-function fallbackCopy(code) {
+function fallbackCopy(code, callback) {
   const ta = document.createElement('textarea');
   ta.value = code;
   ta.style.position = 'fixed';
@@ -2264,11 +2323,19 @@ function fallbackCopy(code) {
   ta.select();
   try {
     document.execCommand('copy');
+    if (callback) callback();
     alert('已复制：' + code);
   } catch(e) {
     alert('复制失败，请手动长按选择：' + code);
   }
   document.body.removeChild(ta);
+}
+
+function resetGiftCopied() {
+  if (!confirm('确定要清除所有“已复制”标记吗？')) return;
+  giftCopiedList = [];
+  saveGiftCopied(giftCopiedList);
+  renderGiftList();
 }
 function runStarSim() {
   const box = document.getElementById('simResult');
@@ -3658,6 +3725,28 @@ const TRANSCEND_HEROES = [
    礼包码数据
    ============================================================ */
 
+ const GIFT_COPIED_KEY = 'crazysw_gift_copied_v1';
+
+function loadGiftCopied() {
+  try {
+    const raw = localStorage.getItem(GIFT_COPIED_KEY);
+    if (raw) {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) return arr;
+    }
+  } catch(e) {}
+  return [];
+}
+
+function saveGiftCopied(arr) {
+  localStorage.setItem(GIFT_COPIED_KEY, JSON.stringify(arr));
+}
+
+let giftCopiedList = loadGiftCopied();
+
+function isGiftCopied(code) {
+  return giftCopiedList.indexOf(code) >= 0;
+}
 const GIFT_CODES = [
   {
     group: "近期有效（2026年9月）",
