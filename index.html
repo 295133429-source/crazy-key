@@ -4610,6 +4610,10 @@ function doImport() {
   location.reload();
 }
 
+const renderedTabs = {};
+
+const renderedTabs = {};
+
 function switchTab(panelId) {
   document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
   document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
@@ -4617,8 +4621,43 @@ function switchTab(panelId) {
   if (tab) tab.classList.add('active');
   const panel = document.getElementById(panelId);
   if (panel) panel.classList.add('active');
+
+  if (renderedTabs[panelId]) return;
+  renderedTabs[panelId] = true;
+
+  if (panelId === 'byHero') renderHero(heroSelectEl.value);
+  else if (panelId === 'byStat') renderStat(statSelectEl.value);
+  else if (panelId === 'myBag') renderBag(activeBagHero);
+  else if (panelId === 'training') {
+    const el = document.getElementById('trainingHeroSelect');
+    if (el) renderTraining(el.value);
+  }
+  else if (panelId === 'guide') {
+    const el = document.getElementById('guideHeroSelect');
+    if (el) renderGuide(el.value);
+  }
+  else if (panelId === 'team') renderPresetResult();
+  else if (panelId === 'gift') renderGiftList();
 }
 
+  if (renderedTabs[panelId]) return;
+  renderedTabs[panelId] = true;
+
+  if (panelId === 'byHero') renderHero(heroSelectEl.value);
+  else if (panelId === 'byStat') renderStat(statSelectEl.value);
+  else if (panelId === 'myBag') renderBag(activeBagHero);
+  else if (panelId === 'training') {
+    const el = document.getElementById('trainingHeroSelect');
+    if (el) renderTraining(el.value);
+  }
+  else if (panelId === 'guide') {
+    const el = document.getElementById('guideHeroSelect');
+    if (el) renderGuide(el.value);
+  }
+  else if (panelId === 'team') renderPresetResult();
+  else if (panelId === 'gift') renderGiftList();
+}
+renderedTabs['byHero'] = true;
 document.querySelectorAll('.tab').forEach(t => {
   t.onclick = () => {
     switchTab(t.dataset.panel);
@@ -4638,7 +4677,6 @@ if (trainingHeroSelectEl) {
     renderTraining(trainingHeroSelectEl.value);
   };
   trainingHeroSelectEl.value = Object.keys(HEROES)[0];
-  renderTraining(trainingHeroSelectEl.value);
 }
 /* 英雄攻略页下拉 */
 const guideHeroSelectEl = document.getElementById('guideHeroSelect');
@@ -4652,7 +4690,6 @@ if (guideHeroSelectEl) {
     renderGuide(guideHeroSelectEl.value);
   };
   guideHeroSelectEl.value = Object.keys(HEROES)[0];
-  renderGuide(guideHeroSelectEl.value);
 }
  /* 模拟中心英雄下拉 */
 const simHeroSelectEl = document.getElementById('simHeroSelect');
@@ -4663,14 +4700,8 @@ if (simHeroSelectEl) {
     simHeroSelectEl.appendChild(o);
   });
 }
-/* 礼包码初始渲染 */
-renderGiftList();
 renderHero(heroSelectEl.value);
-renderStat(statSelectEl.value);
-renderBag(activeBagHero);
-renderPresetResult();
 initFreeHeroSelect();
-renderFreeSelectedChips();
 </script>
 </body>
 </html>
