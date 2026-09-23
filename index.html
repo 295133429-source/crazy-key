@@ -643,7 +643,7 @@ var _hmt = _hmt || [];
   <div class="tab" data-panel="guide">英雄攻略</div>
   <div class="tab" data-panel="team">阵容玩法</div>
   <div class="tab" data-panel="simulator">模拟中心</div>
-  <div class="tab" data-panel="gift">礼包中心</div>
+  <div class="tab" data-panel="gift">礼包码</div>
   <div class="tab" data-panel="backup">备份</div>
 </div>
 
@@ -1058,7 +1058,8 @@ const STAT_DEFS = {
   "控制抗性":   "减少自身被控制的时间。",
   "冷却缩减":   "缩短技能冷却时间。",
   "初始能量":   "开局时额外获得的能量，让技能更快释放。"
-};const HEROES = {
+};
+const HEROES = {
   "大嘴山姆": {
     role: "坦克", damageType: "物理", outputType: "普攻",
     position: "前排承伤/控场",
@@ -1342,7 +1343,7 @@ const STAT_DEFS = {
     tip: "S6超凡辅助，核心机制是唤魂阵（减伤+增伤+回血+召唤物）。"
   }
 };
-  "梦游超人"：待补充数据
+/* 注：原「梦游超人：待补充数据」一行因语法错误已删除 */
 
 const STAT_GROUPS = {
   "输出类": ["攻击", "技能强度", "攻击速度", "伤害增加", "护甲穿透", "抗性穿透", "暴击", "暴击伤害", "命中", "初始能量", "生命回收"],
@@ -1884,6 +1885,7 @@ function statsLine(stats) {
 
 function renderHero(name) {
   const h = HEROES[name];
+  if (!h) { heroResultEl.innerHTML = `<div class="empty">未找到该英雄数据</div>`; return; }
   const w = h.baseWeight;
   const scenarioTag = currentScenario !== '通用' ? `<span class="role-tag scn">场景：${currentScenario}</span>` : '';
 
@@ -1955,6 +1957,7 @@ function statTier(heroName, statName) {
 
 function renderStat(stat) {
   const s = STATS[stat];
+  if (!s) { statResultEl.innerHTML = `<div class="empty">未找到该词条</div>`; return; }
   const scnCoef = getScenarioMultiplier(stat);
   const scenarioTag = currentScenario !== '通用' ? `<span class="role-tag scn">场景：${currentScenario}</span>` : '';
 
@@ -2025,11 +2028,13 @@ function renderStat(stat) {
 
   html += `<div class="tip info">${s.reason}</div></div>`;
   statResultEl.innerHTML = html;
-}/* ============ 配置和对比页 ============ */
+}
+/* ============ 配置和对比页 ============ */
 
 function renderBag(name) {
   const data = getHeroData(name);
   const h = HEROES[name];
+  if (!h) { bagResultEl.innerHTML = `<div class="empty">未找到该英雄数据</div>`; return; }
   const badgeCount = Object.keys(data.badges).length;
   const gearCount = Object.keys(data.gears).length;
 
@@ -2250,115 +2255,8 @@ function closeAddSlot(name, type, slotKey) {
   renderBag(name);
 }
 
-/* ============ 英雄培养页 ============ */
-/* ============ 英雄攻略页 ============ */
+/* ============ 升星模拟 ============ */
 
- /* ============ 升星模拟 ============ */
-
- /* ============ 礼包码渲染 ============ */
-
-function renderGiftList() {
-  const box = document.getElementById('giftResult');
-  if (!box) return;
-
-  const searchEl = document.getElementById('giftSearch');
-  const keyword = searchEl ? searchEl.value.trim().toLowerCase() : '';
-
-  let totalCount = 0;
-  let copiedCount = 0;
-  GIFT_CODES.forEach(group => {
-    group.codes.forEach(c => {
-      totalCount++;
-      if (isGiftCopied(c.code)) copiedCount++;
-    });
-  });
-
-  const countEl = document.getElementById('giftCount');
-  if (countEl) {
-    countEl.textContent = `共 ${totalCount} 个礼包码 · 已复制 ${copiedCount} 个`;
-  }
-
-  let html = '';
-
-  GIFT_CODES.forEach(group => {
-    const matched = group.codes.filter(c => {
-      if (!keyword) return true;
-      return c.code.toLowerCase().indexOf(keyword) >= 0 ||
-             c.reward.toLowerCase().indexOf(keyword) >= 0;
-    });
-    if (matched.length === 0) return;
-
-    html += `<div class="gift-section-title">${group.group}（${matched.length}）</div>`;
-
-    matched.forEach(c => {
-      const copied = isGiftCopied(c.code);
-      html += `<div class="gift-card ${copied ? 'copied' : ''}" id="gift-${encodeURIComponent(c.code)}">
-        <div class="gift-head">
-          <span>
-            <span class="gift-code">${c.code}</span>
-            ${copied ? `<span class="copied-tag">✅ 已复制</span>` : ''}
-          </span>
-          ${c.date ? `<span class="gift-date">📅 ${c.date}</span>` : ''}
-        </div>
-        <div class="gift-reward">🎁 ${c.reward}</div>
-        <div class="gift-actions">
-          <button class="gift-btn" onclick="copyGiftCode('${c.code}')">${copied ? '再复制一次' : '复制礼包码'}</button>
-        </div>
-      </div>`;
-    });
-  });
-
-  if (!html) {
-    html = `<div class="tip warn">没有匹配的礼包码。换个关键词试试。</div>`;
-  }
-
-  box.innerHTML = html;
-}
-
-function copyGiftCode(code) {
-  const doMark = () => {
-    if (!isGiftCopied(code)) {
-      giftCopiedList.push(code);
-      saveGiftCopied(giftCopiedList);
-    }
-    renderGiftList();
-  };
-
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(code).then(() => {
-      doMark();
-      alert('已复制：' + code);
-    }).catch(() => {
-      fallbackCopy(code, doMark);
-    });
-  } else {
-    fallbackCopy(code, doMark);
-  }
-}
-
-function fallbackCopy(code, callback) {
-  const ta = document.createElement('textarea');
-  ta.value = code;
-  ta.style.position = 'fixed';
-  ta.style.left = '-9999px';
-  document.body.appendChild(ta);
-  ta.select();
-  try {
-    document.execCommand('copy');
-    if (callback) callback();
-    alert('已复制：' + code);
-  } catch(e) {
-    alert('复制失败，请手动长按选择：' + code);
-  }
-  document.body.removeChild(ta);
-}
-
-function resetGiftCopied() {
-  if (!confirm('确定要清除所有“已复制”标记吗？')) return;
-  giftCopiedList = [];
-  saveGiftCopied(giftCopiedList);
-  renderGiftList();
-}
 function runStarSim() {
   const box = document.getElementById('simResult');
   if (!box) return;
@@ -2380,14 +2278,12 @@ function runStarSim() {
     ? `<span class="sim-tag transcend">超凡</span>`
     : `<span class="sim-tag legend">传说</span>`;
 
-  /* 计算需要的碎片和螺丝 */
   const needFrag = STAR_FRAG_TOTAL[targetStar] - STAR_FRAG_TOTAL[currentStar];
   const needScrew = (STAR_SCREW_TOTAL[targetStar] || 0) - (STAR_SCREW_TOTAL[currentStar] || 0);
 
   const fragGap = Math.max(0, needFrag - currentFrags);
   const screwGap = needScrew;
 
-  /* 关键节点 */
   const milestones = [];
   if (currentStar < 3 && targetStar >= 3) {
     milestones.push({ name: '3星（解锁4技能）', frag: STAR_FRAG_TOTAL[3] - STAR_FRAG_TOTAL[currentStar] - currentFrags });
@@ -2452,6 +2348,9 @@ function runStarSim() {
   html += `</div>`;
   box.innerHTML = html;
 }
+
+/* ============ 英雄攻略渲染 ============ */
+
 function renderGuide(heroName) {
   const box = document.getElementById('guideResult');
   if (!box) return;
@@ -2507,6 +2406,9 @@ function toggleGuideDetail(id) {
     btn.textContent = el.classList.contains('open') ? '收起详情 ▴' : '展开详情 ▾';
   }
 }
+
+/* ============ 英雄培养渲染 ============ */
+
 function renderTraining(heroName) {
   const box = document.getElementById('trainingResult');
   if (!box) return;
@@ -3703,13 +3605,7 @@ function analyzeThresholdShift(hero, oldItem, newStats) {
   return warnings;
 }
 
-/* ============ 阵容玩法 ============ */
-/* ============================================================
-   英雄攻略数据
-   ============================================================ */
-/* ============================================================
-   升星消耗数据
-   ============================================================ */
+/* ============ 升星消耗数据 ============ */
 
 /* 升到该星级所需碎片（全英雄通用） */
 const STAR_FRAG_COST = {
@@ -3743,11 +3639,12 @@ const TRANSCEND_HEROES = [
   "北境大帝", "过江龙", "探案双子星",
   "自由斗士", "海底之王", "铁肘老大", "战神小布", "修女瑟琳娜"
 ];
- /* ============================================================
+
+/* ============================================================
    礼包码数据
    ============================================================ */
 
- const GIFT_COPIED_KEY = 'crazysw_gift_copied_v1';
+const GIFT_COPIED_KEY = 'crazysw_gift_copied_v1';
 
 function loadGiftCopied() {
   try {
@@ -3770,6 +3667,117 @@ function isGiftCopied(code) {
   return giftCopiedList.indexOf(code) >= 0;
 }
 
+/* ============ 礼包码渲染 ============ */
+
+function renderGiftList() {
+  const box = document.getElementById('giftResult');
+  if (!box) return;
+
+  const searchEl = document.getElementById('giftSearch');
+  const keyword = searchEl ? searchEl.value.trim().toLowerCase() : '';
+
+  /* 安全兜底：giftcodes.js 未加载或未定义 GIFT_CODES 时，不崩溃 */
+  const source = (typeof GIFT_CODES !== 'undefined' && Array.isArray(GIFT_CODES)) ? GIFT_CODES : [];
+
+  let totalCount = 0;
+  let copiedCount = 0;
+  source.forEach(group => {
+    (group.codes || []).forEach(c => {
+      totalCount++;
+      if (isGiftCopied(c.code)) copiedCount++;
+    });
+  });
+
+  const countEl = document.getElementById('giftCount');
+  if (countEl) {
+    countEl.textContent = `共 ${totalCount} 个礼包码 · 已复制 ${copiedCount} 个`;
+  }
+
+  let html = '';
+
+  source.forEach(group => {
+    const matched = (group.codes || []).filter(c => {
+      if (!keyword) return true;
+      return c.code.toLowerCase().indexOf(keyword) >= 0 ||
+             c.reward.toLowerCase().indexOf(keyword) >= 0;
+    });
+    if (matched.length === 0) return;
+
+    html += `<div class="gift-section-title">${group.group}（${matched.length}）</div>`;
+
+    matched.forEach(c => {
+      const copied = isGiftCopied(c.code);
+      html += `<div class="gift-card ${copied ? 'copied' : ''}" id="gift-${encodeURIComponent(c.code)}">
+        <div class="gift-head">
+          <span>
+            <span class="gift-code">${c.code}</span>
+            ${copied ? `<span class="copied-tag">✅ 已复制</span>` : ''}
+          </span>
+          ${c.date ? `<span class="gift-date">📅 ${c.date}</span>` : ''}
+        </div>
+        <div class="gift-reward">🎁 ${c.reward}</div>
+        <div class="gift-actions">
+          <button class="gift-btn" onclick="copyGiftCode('${c.code}')">${copied ? '再复制一次' : '复制礼包码'}</button>
+        </div>
+      </div>`;
+    });
+  });
+
+  if (!html) {
+    html = `<div class="tip warn">没有匹配的礼包码。换个关键词试试。</div>`;
+  }
+
+  box.innerHTML = html;
+}
+
+function copyGiftCode(code) {
+  const doMark = () => {
+    if (!isGiftCopied(code)) {
+      giftCopiedList.push(code);
+      saveGiftCopied(giftCopiedList);
+    }
+    renderGiftList();
+  };
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(code).then(() => {
+      doMark();
+      alert('已复制：' + code);
+    }).catch(() => {
+      fallbackCopy(code, doMark);
+    });
+  } else {
+    fallbackCopy(code, doMark);
+  }
+}
+
+function fallbackCopy(code, callback) {
+  const ta = document.createElement('textarea');
+  ta.value = code;
+  ta.style.position = 'fixed';
+  ta.style.left = '-9999px';
+  document.body.appendChild(ta);
+  ta.select();
+  try {
+    document.execCommand('copy');
+    if (callback) callback();
+    alert('已复制：' + code);
+  } catch(e) {
+    alert('复制失败，请手动长按选择：' + code);
+  }
+  document.body.removeChild(ta);
+}
+
+function resetGiftCopied() {
+  if (!confirm('确定要清除所有“已复制”标记吗？')) return;
+  giftCopiedList = [];
+  saveGiftCopied(giftCopiedList);
+  renderGiftList();
+}
+
+/* ============================================================
+   英雄攻略数据
+   ============================================================ */
 const HERO_GUIDES = {
   "雷教授": [
     {
@@ -4086,7 +4094,11 @@ const HERO_GUIDES = {
     }
   ]
 };
- const SEASON_TEAMS = {
+
+/* ============================================================
+   赛季数据
+   ============================================================ */
+const SEASON_TEAMS = {
   "S1": {
     desc: "S1 赛季（2026-01-20 攻略）",
     teams: [
@@ -4255,6 +4267,7 @@ const HERO_GUIDES = {
     ]
   }
 };
+
 const PRESET_TEAMS = {
   "国家队（兰博核心）": {
     heroes: ["大嘴山姆", "兰博", "巫师老侃", "机器屠夫", "蜜雪儿"],
@@ -4416,7 +4429,7 @@ function renderTeamConflict(heroes) {
   return html;
 }
 
- /* ============ 按赛季推荐阵容渲染 ============ */
+/* ============ 按赛季推荐阵容渲染 ============ */
 
 function renderSeasonResult() {
   const sel = document.getElementById('seasonSelect');
@@ -4461,6 +4474,7 @@ function renderSeasonResult() {
 
   box.innerHTML = html;
 }
+
 function renderPresetResult() {
   const name = document.getElementById('presetTeam').value;
   const team = PRESET_TEAMS[name];
@@ -4550,18 +4564,24 @@ function renderFreeResult() {
   box.innerHTML = html;
 }
 
-document.getElementById('teamMode').onchange = function() {
-  const mode = this.value;
-  document.getElementById('presetMode').style.display = mode === 'preset' ? 'block' : 'none';
-  document.getElementById('seasonMode').style.display = mode === 'season' ? 'block' : 'none';
-  document.getElementById('freeMode').style.display = mode === 'free' ? 'block' : 'none';
-  if (mode === 'preset') renderPresetResult();
-  else if (mode === 'season') renderSeasonResult();
-  else {
-    renderFreeSelectedChips();
-    renderFreeResult();
-  }
-};
+/* ============ 玩法模式切换 ============ */
+
+(function initTeamMode() {
+  const el = document.getElementById('teamMode');
+  if (!el) return;
+  el.onchange = function() {
+    const mode = this.value;
+    document.getElementById('presetMode').style.display = mode === 'preset' ? 'block' : 'none';
+    document.getElementById('seasonMode').style.display = mode === 'season' ? 'block' : 'none';
+    document.getElementById('freeMode').style.display = mode === 'free' ? 'block' : 'none';
+    if (mode === 'preset') renderPresetResult();
+    else if (mode === 'season') renderSeasonResult();
+    else {
+      renderFreeSelectedChips();
+      renderFreeResult();
+    }
+  };
+})();
 
 /* ============ 导出/导入 ============ */
 
@@ -4610,7 +4630,7 @@ function doImport() {
   location.reload();
 }
 
-const renderedTabs = {};
+/* ============ Tab 切换（懒渲染） ============ */
 
 const renderedTabs = {};
 
@@ -4625,39 +4645,31 @@ function switchTab(panelId) {
   if (renderedTabs[panelId]) return;
   renderedTabs[panelId] = true;
 
-  if (panelId === 'byHero') renderHero(heroSelectEl.value);
-  else if (panelId === 'byStat') renderStat(statSelectEl.value);
-  else if (panelId === 'myBag') renderBag(activeBagHero);
-  else if (panelId === 'training') {
+  if (panelId === 'byHero') {
+    renderHero(heroSelectEl.value);
+  } else if (panelId === 'byStat') {
+    renderStat(statSelectEl.value);
+  } else if (panelId === 'myBag') {
+    renderBag(activeBagHero);
+  } else if (panelId === 'training') {
     const el = document.getElementById('trainingHeroSelect');
     if (el) renderTraining(el.value);
-  }
-  else if (panelId === 'guide') {
+  } else if (panelId === 'guide') {
     const el = document.getElementById('guideHeroSelect');
     if (el) renderGuide(el.value);
+  } else if (panelId === 'team') {
+    const modeEl = document.getElementById('teamMode');
+    const mode = modeEl ? modeEl.value : 'preset';
+    if (mode === 'season') renderSeasonResult();
+    else if (mode === 'free') { renderFreeSelectedChips(); renderFreeResult(); }
+    else renderPresetResult();
+  } else if (panelId === 'gift') {
+    renderGiftList();
   }
-  else if (panelId === 'team') renderPresetResult();
-  else if (panelId === 'gift') renderGiftList();
 }
 
-  if (renderedTabs[panelId]) return;
-  renderedTabs[panelId] = true;
-
-  if (panelId === 'byHero') renderHero(heroSelectEl.value);
-  else if (panelId === 'byStat') renderStat(statSelectEl.value);
-  else if (panelId === 'myBag') renderBag(activeBagHero);
-  else if (panelId === 'training') {
-    const el = document.getElementById('trainingHeroSelect');
-    if (el) renderTraining(el.value);
-  }
-  else if (panelId === 'guide') {
-    const el = document.getElementById('guideHeroSelect');
-    if (el) renderGuide(el.value);
-  }
-  else if (panelId === 'team') renderPresetResult();
-  else if (panelId === 'gift') renderGiftList();
-}
 renderedTabs['byHero'] = true;
+
 document.querySelectorAll('.tab').forEach(t => {
   t.onclick = () => {
     switchTab(t.dataset.panel);
@@ -4678,6 +4690,7 @@ if (trainingHeroSelectEl) {
   };
   trainingHeroSelectEl.value = Object.keys(HEROES)[0];
 }
+
 /* 英雄攻略页下拉 */
 const guideHeroSelectEl = document.getElementById('guideHeroSelect');
 if (guideHeroSelectEl) {
@@ -4691,7 +4704,8 @@ if (guideHeroSelectEl) {
   };
   guideHeroSelectEl.value = Object.keys(HEROES)[0];
 }
- /* 模拟中心英雄下拉 */
+
+/* 模拟中心英雄下拉 */
 const simHeroSelectEl = document.getElementById('simHeroSelect');
 if (simHeroSelectEl) {
   Object.keys(HEROES).forEach(name => {
@@ -4700,6 +4714,8 @@ if (simHeroSelectEl) {
     simHeroSelectEl.appendChild(o);
   });
 }
+
+/* 首屏只渲染「按英雄查」 */
 renderHero(heroSelectEl.value);
 initFreeHeroSelect();
 </script>
