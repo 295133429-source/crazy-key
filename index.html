@@ -750,6 +750,7 @@ var _hmt = _hmt || [];
     <div class="field">
       <select id="teamMode">
         <option value="preset">主流阵容模板</option>
+        <option value="season">赛季推荐阵容</option>
         <option value="free">自由选择英雄</option>
       </select>
     </div>
@@ -765,6 +766,23 @@ var _hmt = _hmt || [];
     <div id="presetResult"></div>
   </div>
 
+   <div id="seasonMode" style="display:none">
+    <div class="form-block">
+      <h3>选择赛季</h3>
+      <div class="field">
+        <select id="seasonSelect" onchange="renderSeasonResult()">
+          <option value="S1">S1 赛季</option>
+          <option value="S2">S2 赛季</option>
+          <option value="S3">S3 赛季</option>
+          <option value="S4">S4 赛季</option>
+          <option value="S5">S5 赛季</option>
+          <option value="S6">S6 赛季</option>
+          <option value="S7">S7 赛季</option>
+        </select>
+      </div>
+    </div>
+    <div id="seasonResult"></div>
+  </div>
   <div id="freeMode" style="display:none">
     <div class="form-block">
       <h3>选择英雄（最多 5 个）</h3>
@@ -4398,6 +4416,51 @@ function renderTeamConflict(heroes) {
   return html;
 }
 
+ /* ============ 按赛季推荐阵容渲染 ============ */
+
+function renderSeasonResult() {
+  const sel = document.getElementById('seasonSelect');
+  const box = document.getElementById('seasonResult');
+  if (!sel || !box) return;
+  const seasonKey = sel.value;
+  const season = SEASON_TEAMS[seasonKey];
+  if (!season) { box.innerHTML = ''; return; }
+
+  let html = `<div class="card"><h2>${season.desc}</h2>
+    <div class="tip info">以下阵容来自玩家攻略，按赛季阶段整理。攻略可能随版本更新变化，请以游戏内实际情况为准。</div>
+    <div class="tip warn">⚠️ 部分阵容信息不完整（例如 S2、S4、S7），已标注。</div>
+  </div>`;
+
+  season.teams.forEach((team, idx) => {
+    html += `<div class="card">
+      <h2>${idx + 1}. ${team.name}</h2>
+      <div class="row">
+        <div class="label">阵容</div>
+        <div class="vals">`;
+    team.heroes.forEach(h => {
+      const hero = HEROES[h];
+      const role = hero ? hero.role : '未知';
+      html += `<span class="val first">${h}（${role}）</span>`;
+    });
+    html += `</div></div>
+      <div class="row"><div class="label">核心思路</div><div class="tip">${team.core}</div></div>
+      <div class="row"><div class="label">来源</div><div class="tip warn">${team.source}</div></div>
+    </div>`;
+
+    const roles = { "坦克": 0, "战士": 0, "法师": 0, "射手": 0 };
+    team.heroes.forEach(h => {
+      if (HEROES[h]) roles[HEROES[h].role] = (roles[HEROES[h].role] || 0) + 1;
+    });
+    html += `<div class="analysis">
+      <h4>📋 职业配比</h4>`;
+    Object.keys(roles).forEach(r => {
+      html += `<div class="line ${roles[r] > 0 ? 'good' : ''}">${r}：${roles[r]} 个</div>`;
+    });
+    html += `</div>`;
+  });
+
+  box.innerHTML = html;
+}
 function renderPresetResult() {
   const name = document.getElementById('presetTeam').value;
   const team = PRESET_TEAMS[name];
@@ -4488,10 +4551,12 @@ function renderFreeResult() {
 }
 
 document.getElementById('teamMode').onchange = function() {
-  const isPreset = this.value === 'preset';
-  document.getElementById('presetMode').style.display = isPreset ? 'block' : 'none';
-  document.getElementById('freeMode').style.display = isPreset ? 'none' : 'block';
-  if (isPreset) renderPresetResult();
+  const mode = this.value;
+  document.getElementById('presetMode').style.display = mode === 'preset' ? 'block' : 'none';
+  document.getElementById('seasonMode').style.display = mode === 'season' ? 'block' : 'none';
+  document.getElementById('freeMode').style.display = mode === 'free' ? 'block' : 'none';
+  if (mode === 'preset') renderPresetResult();
+  else if (mode === 'season') renderSeasonResult();
   else {
     renderFreeSelectedChips();
     renderFreeResult();
