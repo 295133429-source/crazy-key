@@ -1342,7 +1342,7 @@ const HEROES = {
     baseWeight: { hp: 0.8, atk: 0.2, skill: 1.0 },
     tip: "辅助法师，复活机制给双C兜底。技能强度和生命优先。"
   },
-  "修女瑟琳娜": {
+    "修女瑟琳娜": {
     role: "法师", damageType: "能量", outputType: "技能",
     position: "S6超凡辅助/减伤增伤",
     badge: ["技能强度", "伤害减免", "生命", "暴击抵抗"],
@@ -1350,6 +1350,24 @@ const HEROES = {
     parts: ["枪械", "防具"],
     baseWeight: { hp: 0.8, atk: 0.2, skill: 1.0 },
     tip: "S6超凡辅助，核心机制是唤魂阵（减伤+增伤+回血+召唤物）。"
+  },
+  "探案双子星": {
+    role: "坦克", damageType: "能量", outputType: "技能",
+    position: "召唤型坦克/大嘴山姆平替",
+    badge: ["生命", "闪避", "暴击抵抗", "伤害减免"],
+    gear:  ["生命", "闪避", "暴击抵抗", "伤害减免"],
+    parts: ["防具"],
+    baseWeight: { hp: 1.0, atk: 0.2, skill: 0.2 },
+    tip: "红色超凡召唤型坦克，对标大嘴山姆。核心是护盾+范围嘲讽+美人鱼召唤（阿左治疗、阿翘眩晕、阿脸灼烧）。徽章/装备优先生命、闪避、暴击抵抗、减伤；自身技能已提供双抗，无需过量堆叠。S4前可作大嘴平替，S4后搭配老乔进召唤队优于大帝。三星可过渡，中氪以下不建议大量投入万能红碎。"
+  },
+  "过江龙": {
+    role: "战士", damageType: "未确认", outputType: "技能",
+    position: "混战前排战士/兄弟会",
+    badge: [],
+    gear:  [],
+    parts: ["兵刃", "枪械"],
+    baseWeight: { hp: 0.6, atk: 1.0, skill: 0.3 },
+    tip: "⚠️ 职业（战士）和阵营（兄弟会）来自官方公告，已确认。词条优先级、伤害类型、输出类型暂无三篇互证攻略，标注未确认，不编造。被动提供伤害缓冲，主动技能为多段范围伤害+胆怯削弱敌方减伤，随赛季解锁额外伤害加成。基础血量约307万（由战神小布435万反推）。"
   }
 };
 /* 注：原「梦游超人：待补充数据」一行因语法错误已删除 */
@@ -1895,6 +1913,21 @@ function statsLine(stats) {
 function renderHero(name) {
   const h = HEROES[name];
   if (!h) { heroResultEl.innerHTML = `<div class="empty">未找到该英雄数据</div>`; return; }
+
+  if (!h.badge || h.badge.length === 0) {
+    const scenarioTag = currentScenario !== '通用' ? `<span class="role-tag scn">场景：${currentScenario}</span>` : '';
+    heroResultEl.innerHTML = `<div class="card"><h2>${name}
+      <span class="role-tag">${h.role}</span>
+      <span class="role-tag dmg">${h.damageType}</span>
+      <span class="role-tag out">${h.outputType}</span>
+      ${scenarioTag}
+    </h2>
+      <div class="tip warn">⚠️ 该英雄的词条优先级尚未收录。职业/阵营/技能机制已确认，但装备和徽章洗练推荐暂无三篇互证攻略，按原则标注未确认，不编造。</div>
+      <div class="tip">${h.tip}</div>
+    </div>`;
+    return;
+  }
+
   const w = h.baseWeight;
   const scenarioTag = currentScenario !== '通用' ? `<span class="role-tag scn">场景：${currentScenario}</span>` : '';
 
@@ -2044,6 +2077,19 @@ function renderBag(name) {
   const data = getHeroData(name);
   const h = HEROES[name];
   if (!h) { bagResultEl.innerHTML = `<div class="empty">未找到该英雄数据</div>`; return; }
+
+  if ((!h.badge || h.badge.length === 0) && (!h.gear || h.gear.length === 0)) {
+    bagResultEl.innerHTML = `<div class="card"><h2>${name}
+      <span class="role-tag">${h.role}</span>
+      <span class="role-tag dmg">${h.damageType}</span>
+      <span class="role-tag out">${h.outputType}</span>
+    </h2>
+      <div class="tip warn">⚠️ 该英雄的词条优先级尚未收录，无法给出评分建议。如果录入装备，分数会按通用公式计算，可能不准确。</div>
+      <div class="tip">${h.tip}</div>
+    </div>`;
+    return;
+  }
+
   const badgeCount = Object.keys(data.badges).length;
   const gearCount = Object.keys(data.gears).length;
 
@@ -2423,6 +2469,14 @@ function renderTraining(heroName) {
   if (!box) return;
   const h = HEROES[heroName];
   if (!h) { box.innerHTML = ''; return; }
+
+  if (!h.badge || h.badge.length === 0) {
+    box.innerHTML = `<div class="card"><h2>${heroName} · 培养方向</h2>
+      <div class="tip warn">⚠️ 该英雄的词条优先级尚未收录，无法给出培养方向建议。职业/阵营已确认，但词条数据缺失。</div>
+      <div class="tip">${h.tip}</div>
+    </div>`;
+    return;
+  }
 
   const dir = getHeroDirection(heroName);
   const presetNames = Object.keys(DIRECTION_PRESETS);
