@@ -3,7 +3,8 @@ const GIFT_CODES = [
   {
     group: "2026-09-19 更新",
     codes: [
-      { code: "xyxz40w666", reward: "通用礼包", date: "2026-09-21" },
+      { code: "yxz787DU5R", reward: "通用礼包", date: "2026-09-23" },
+      { code: "xyxz40w666", reward: "通用礼包", date: "2026-09-22" },
       { code: "中秋企微专属礼", reward: "通用礼包", date: "2026-09-22" },
       { code: "YXZER87H", reward: "通用礼包", date: "2026-09-22" },
       { code: "游戏圈生存补给", reward: "通用礼包", date: "2026-09-22" },
