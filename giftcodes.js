@@ -1,8 +1,9 @@
 /* 礼包码数据 - 每天更新这个文件即可 */
 const GIFT_CODES = [
   {
-    group: "2026-09-19 更新",
+    group: "2026-09-23 更新",
     codes: [
+      { code: "WYHCS5PU", reward: "通用礼包", date: "2026-09-23" },
       { code: "yxz787DU5R", reward: "通用礼包", date: "2026-09-23" },
       { code: "xyxz40w666", reward: "通用礼包", date: "2026-09-22" },
       { code: "中秋企微专属礼", reward: "通用礼包", date: "2026-09-22" },
