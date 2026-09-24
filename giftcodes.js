@@ -35,9 +35,9 @@ const GIFT_CODES = [
       { code: "水世界888", reward: "通用礼包", date: "" },
       { code: "水世界上线礼", reward: "上线纪念礼包", date: "" }
     ]
-  }
-];
-    group: "微信群礼包",
+  },
+  {
+    group: "微信群礼包（玩家整理，非官方）",
     codes: [
       { code: "C45976777666", reward: "微信群礼包", date: "" },
       { code: "9SSJ2N", reward: "微信群礼包", date: "" },
