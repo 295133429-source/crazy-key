@@ -587,42 +587,9 @@
     font-size: 11px; color: #7a8a9a; margin-top: 6px;
     font-style: italic;
   }
-    .guide-star {
+  .guide-star {
     color: #e2d47e; font-size: 12px; white-space: nowrap;
   }
-  /* ============ 微信环境引导遮罩 ============ */
-  .wx-overlay {
-    position: fixed; inset: 0; z-index: 99999;
-    background: rgba(0, 0, 0, 0.94);
-    display: none; flex-direction: column;
-    align-items: center; justify-content: center;
-    padding: 24px; text-align: center;
-    color: #fff;
-  }
-  .wx-overlay.open { display: flex; }
-  .wx-overlay .wx-arrow {
-    font-size: 72px; line-height: 1;
-    color: #7ee2a8; margin-bottom: 24px;
-    animation: wxBounce 1.5s infinite;
-  }
-  @keyframes wxBounce {
-    0%, 100% { transform: translate(0, 0); }
-    50% { transform: translate(14px, -14px); }
-  }
-  .wx-overlay .wx-title {
-    font-size: 20px; font-weight: 600; margin-bottom: 14px;
-  }
-  .wx-overlay .wx-desc {
-    font-size: 14px; line-height: 1.9; color: #b8c8d8;
-    margin-bottom: 28px;
-  }
-  .wx-overlay .wx-desc b { color: #7ee2a8; }
-  .wx-overlay .wx-btn {
-    font-size: 13px; padding: 9px 26px;
-    background: transparent; border: 1px solid #5a6a7a;
-    color: #9ab; border-radius: 22px; cursor: pointer;
-  }
-  .wx-overlay .wx-btn:active { background: #1e2a36; }
 </style>
 <script>
 var _hmt = _hmt || [];
@@ -871,18 +838,6 @@ var _hmt = _hmt || [];
     <button class="btn import" onclick="doImport()">导入并覆盖当前数据</button>
     <div class="tip warn">⚠️ 导入会覆盖当前手机上的所有配置数据。建议先导出备份，再导入。</div>
   </div>
-</div>
-
-<!-- 微信环境引导遮罩 -->
-<div class="wx-overlay" id="wxOverlay">
-  <div class="wx-arrow">↗</div>
-  <div class="wx-title">请使用浏览器打开</div>
-  <div class="wx-desc">
-    点击右上角 <b>“···”</b><br>
-    选择 <b>“在浏览器打开”</b><br>
-    即可正常使用全部功能
-  </div>
-  <button class="wx-btn" onclick="closeWxOverlay()">我知道了，继续访问</button>
 </div>
 
 <script>
@@ -4817,34 +4772,6 @@ if (simHeroSelectEl) {
 /* 首屏只渲染「按英雄查」 */
 renderHero(heroSelectEl.value);
 initFreeHeroSelect();
-
-/* ============ 微信环境检测（仅移动端） ============ */
-
-function isWeChatMobile() {
-  const ua = navigator.userAgent;
-  if (!/micromessenger/i.test(ua)) return false;
-  /* PC 微信打开链接不会被拦截，不弹遮罩，避免误伤 */
-  const isMobile = /android|iphone|ipad|ipod|harmonyos|mobile/i.test(ua);
-  return isMobile;
-}
-
-function showWxOverlay() {
-  const overlay = document.getElementById('wxOverlay');
-  if (!overlay) return;
-  overlay.classList.add('open');
-  document.body.style.overflow = 'hidden';
-}
-
-function closeWxOverlay() {
-  const overlay = document.getElementById('wxOverlay');
-  if (!overlay) return;
-  overlay.classList.remove('open');
-  document.body.style.overflow = '';
-}
-
-if (isWeChatMobile()) {
-  showWxOverlay();
-}
 </script>
 </body>
 </html>
